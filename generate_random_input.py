@@ -4,26 +4,23 @@ import sys
 def generate_input(R, C, tree_prob, seed=None):
     if seed is not None:
         random.seed(seed)
-    # Generate the grid: randomly assign a tree or a blank to each cell.
+
     grid = []
+    row_counts = []
+    col_counts = []
+
     for i in range(R):
         row = []
+        
         for j in range(C):
             cell = 'T' if random.random() < tree_prob else '.'
             row.append(cell)
+        
         grid.append(row)
+        row_counts.append(random.randint(0, C))        
 
-    # For each row, count the number of blank cells and choose a random tent count (0 to blank_count)
-    row_counts = []
-    for row in grid:
-        count = random.randint(0, 2 * C)
-        row_counts.append(count)
-
-    # For each column, count the blank cells and choose a random tent count (0 to blank_count)
-    col_counts = []
     for j in range(C):
-        count = random.randint(0, 2 * R)
-        col_counts.append(count)
+        col_counts.append(random.randint(0, R))
 
     return R, C, row_counts, col_counts, grid
 
