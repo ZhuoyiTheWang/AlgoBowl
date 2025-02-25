@@ -11,7 +11,14 @@ import (
 	"time"
 )
 
-// Data structures
+// -----------------------------
+// Data Structures
+// -----------------------------
+
+// pos is a simple struct representing a grid position.
+type pos struct {
+	r, c int
+}
 
 // Grid holds the problem data.
 type Grid struct {
@@ -36,6 +43,10 @@ type Solution struct {
 	rowCounts []int
 	colCounts []int
 }
+
+// -----------------------------
+// Parsing
+// -----------------------------
 
 // readInts reads a slice of ints from a line.
 func readInts(line string) ([]int, error) {
@@ -119,9 +130,13 @@ func (g *Grid) inBounds(r, c int) bool {
 	return r >= 0 && r < g.R && c >= 0 && c < g.C
 }
 
+// -----------------------------
+// Heuristic
+// -----------------------------
+
 // heuristic computes a cell’s heuristic value.
 // It rewards cells with adjacent trees and boosts the value if the corresponding row/col are under target.
-func (g *Grid) heuristic(r, c int, rowCount, colCount, rowTarget, colTarget int) float64 {
+func (g *Grid) heuristic(r, c int, rowCount, colCount int) float64 {
 	score := 0.1
 	neighbors := [][2]int{{r - 1, c}, {r + 1, c}, {r, c - 1}, {r, c + 1}}
 	for _, n := range neighbors {
@@ -131,8 +146,8 @@ func (g *Grid) heuristic(r, c int, rowCount, colCount, rowTarget, colTarget int)
 		}
 	}
 	// Boost if row/col are underfilled.
-	rowDeficit := float64(rowTarget - rowCount)
-	colDeficit := float64(colTarget - colCount)
+	rowDeficit := float64(g.rowTarget[r] - rowCount)
+	colDeficit := float64(g.colTarget[c] - colCount)
 	if rowDeficit < 0 {
 		rowDeficit = 0
 	}
@@ -144,8 +159,6 @@ func (g *Grid) heuristic(r, c int, rowCount, colCount, rowTarget, colTarget int)
 }
 
 // assignDirection chooses a pairing direction for a tent at (r,c) based on an adjacent tree.
-// It checks the four cardinal directions in order: U, D, L, R.
-// If no adjacent tree is found, it returns 'X'.
 func (g *Grid) assignDirection(r, c int) rune {
 	dirs := []struct {
 		dr, dc int
@@ -165,7 +178,6 @@ func (g *Grid) assignDirection(r, c int) rune {
 	return 'X'
 }
 
-// abs returns the absolute value of an integer.
 func abs(a int) int {
 	if a < 0 {
 		return -a
@@ -173,9 +185,11 @@ func abs(a int) int {
 	return a
 }
 
+// -----------------------------
+// Bipartite Matching (for final violation calculation)
+// -----------------------------
+
 // globalPairingViolations computes the pairing penalty using a global matching optimizer.
-// It builds a bipartite graph between tents (from the solution) and trees (from the grid)
-// and calculates the maximum matching. The penalty is the sum of unmatched tents and trees.
 func (g *Grid) globalPairingViolations(sol *Solution) int {
 	type pos struct{ r, c int }
 	var tents []pos
@@ -226,10 +240,94 @@ func (g *Grid) globalPairingViolations(sol *Solution) int {
 	return penalty
 }
 
-// evaluate computes the overall violation score of a solution by summing three parts:
-// 1. Adjacent tent conflicts (including diagonals).
-// 2. Global pairing violations.
-// 3. Row and column count mismatches.
+// computeBipartiteMatchingDetailed returns the exact matching between tents and trees.
+// It returns matchTent where matchTent[i] is the index in trees that is matched with tent i (or -1 if unmatched),
+// along with slices of positions for tents and trees.
+func (g *Grid) computeBipartiteMatchingDetailed(sol *Solution) (matchTent []int, tents []pos, trees []pos) {
+	// Gather tents.
+	for r := 0; r < g.R; r++ {
+		for c := 0; c < g.C; c++ {
+			if sol.placements[r][c] {
+				tents = append(tents, pos{r, c})
+			}
+		}
+	}
+	// Gather trees.
+	for r := 0; r < g.R; r++ {
+		for c := 0; c < g.C; c++ {
+			if g.cells[r][c] == 'T' {
+				trees = append(trees, pos{r, c})
+			}
+		}
+	}
+	adj := make([][]int, len(tents))
+	for i, t := range tents {
+		for j, tr := range trees {
+			if (abs(t.r-tr.r) == 1 && t.c == tr.c) || (abs(t.c-tr.c) == 1 && t.r == tr.r) {
+				adj[i] = append(adj[i], j)
+			}
+		}
+	}
+	matchTree := make([]int, len(trees))
+	for i := range matchTree {
+		matchTree[i] = -1
+	}
+	var dfs func(u int, visited []bool) bool
+	dfs = func(u int, visited []bool) bool {
+		for _, v := range adj[u] {
+			if !visited[v] {
+				visited[v] = true
+				if matchTree[v] == -1 || dfs(matchTree[v], visited) {
+					matchTree[v] = u
+					return true
+				}
+			}
+		}
+		return false
+	}
+	for u := 0; u < len(tents); u++ {
+		visited := make([]bool, len(trees))
+		_ = dfs(u, visited)
+	}
+	matchTent = make([]int, len(tents))
+	for i := range matchTent {
+		matchTent[i] = -1
+	}
+	for j, i := range matchTree {
+		if i != -1 {
+			matchTent[i] = j
+		}
+	}
+	return matchTent, tents, trees
+}
+
+// computeDirection returns a direction character ('U', 'D', 'L', 'R', or 'X')
+// for a tent at (tentR,tentC) paired with a tree at (treeR,treeC).
+func computeDirection(tentR, tentC, treeR, treeC int) rune {
+	if tentR == treeR {
+		if treeC == tentC-1 {
+			return 'L'
+		}
+		if treeC == tentC+1 {
+			return 'R'
+		}
+	}
+	if tentC == treeC {
+		if treeR == tentR-1 {
+			return 'U'
+		}
+		if treeR == tentR+1 {
+			return 'D'
+		}
+	}
+	return 'X'
+}
+
+// -----------------------------
+// Evaluate
+// -----------------------------
+
+// evaluate computes the overall violation score of a solution.
 func (g *Grid) evaluate(sol *Solution) int {
 	violations := 0
 	dirs8 := [][2]int{
@@ -260,6 +358,10 @@ func (g *Grid) evaluate(sol *Solution) int {
 	return violations
 }
 
+// -----------------------------
+// Placement Construction
+// -----------------------------
+
 // canPlace returns true if placing a tent at (r, c) does not violate the non-adjacency rule.
 func (sol *Solution) canPlace(g *Grid, r, c int) bool {
 	dirs8 := [][2]int{
@@ -276,10 +378,7 @@ func (sol *Solution) canPlace(g *Grid, r, c int) bool {
 	return true
 }
 
-// constructHeuristicSolution builds a candidate solution purely using the heuristic.
-// It is a deterministic greedy algorithm that at each step selects the blank cell with the highest
-// heuristic score (subject to constraints) until no further placements can be made.
-// It then runs a repair phase to fill any remaining row or column targets.
+// constructHeuristicSolution builds a candidate solution using the multiplicative heuristic.
 func (g *Grid) constructHeuristicSolution() *Solution {
 	sol := &Solution{
 		placements: make([][]bool, g.R),
@@ -290,7 +389,7 @@ func (g *Grid) constructHeuristicSolution() *Solution {
 		sol.placements[i] = make([]bool, g.C)
 	}
 
-	// Greedy selection: repeatedly choose the eligible blank cell with maximum heuristic score.
+	// Greedy selection: choose the eligible cell with the highest heuristic score.
 	for {
 		var bestR, bestC int
 		bestScore := -1.0
@@ -300,7 +399,7 @@ func (g *Grid) constructHeuristicSolution() *Solution {
 				if g.cells[r][c] == '.' && !sol.placements[r][c] && sol.canPlace(g, r, c) {
 					// Only consider cells in rows/cols that still need tents.
 					if sol.rowCounts[r] < g.rowTarget[r] || sol.colCounts[c] < g.colTarget[c] {
-						score := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c], g.rowTarget[r], g.colTarget[c])
+						score := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c])
 						if score > bestScore {
 							bestScore = score
 							bestR = r
@@ -314,21 +413,19 @@ func (g *Grid) constructHeuristicSolution() *Solution {
 		if !found {
 			break
 		}
-		// Place the tent at the best candidate.
 		sol.placements[bestR][bestC] = true
 		sol.rowCounts[bestR]++
 		sol.colCounts[bestC]++
 	}
 
-	// Repair phase: try to meet any remaining row or column targets.
-	// For rows:
+	// Repair phase for rows.
 	for r := 0; r < g.R; r++ {
 		for sol.rowCounts[r] < g.rowTarget[r] {
 			bestC := -1
 			bestScore := -1.0
 			for c := 0; c < g.C; c++ {
 				if g.cells[r][c] == '.' && !sol.placements[r][c] && sol.canPlace(g, r, c) {
-					score := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c], g.rowTarget[r], g.colTarget[c])
+					score := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c])
 					if score > bestScore {
 						bestScore = score
 						bestC = c
@@ -343,14 +440,14 @@ func (g *Grid) constructHeuristicSolution() *Solution {
 			sol.colCounts[bestC]++
 		}
 	}
-	// For columns:
+	// Repair phase for columns.
 	for c := 0; c < g.C; c++ {
 		for sol.colCounts[c] < g.colTarget[c] {
 			bestR := -1
 			bestScore := -1.0
 			for r := 0; r < g.R; r++ {
 				if g.cells[r][c] == '.' && !sol.placements[r][c] && sol.canPlace(g, r, c) {
-					score := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c], g.rowTarget[r], g.colTarget[c])
+					score := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c])
 					if score > bestScore {
 						bestScore = score
 						bestR = r
@@ -369,6 +466,10 @@ func (g *Grid) constructHeuristicSolution() *Solution {
 	sol.violations = g.evaluate(sol)
 	return sol
 }
+
+// -----------------------------
+// Main
+// -----------------------------
 
 func main() {
 	// Read input.
@@ -394,30 +495,41 @@ func main() {
 		return
 	}
 
-	// Construct a solution purely based on our heuristic.
 	start := time.Now()
 	sol := grid.constructHeuristicSolution()
 	elapsed := time.Since(start)
 	fmt.Printf("Heuristic solution constructed in %v\n", elapsed)
 
+	// Instead of using the naive assignDirection,
+	// perform a detailed bipartite matching so that each tent is matched with a unique tree.
+	matchTent, tents, trees := grid.computeBipartiteMatchingDetailed(sol)
+
 	// Prepare output.
 	outputBuilder := &strings.Builder{}
+	// Count how many tents.
 	tentCount := 0
-	placements := []TentPlacement{}
 	for r := 0; r < grid.R; r++ {
 		for c := 0; c < grid.C; c++ {
 			if sol.placements[r][c] {
 				tentCount++
-				dir := grid.assignDirection(r, c)
-				placements = append(placements, TentPlacement{r: r, c: c, dir: dir})
 			}
 		}
 	}
 	fmt.Fprintf(outputBuilder, "%d\n", sol.violations)
 	fmt.Fprintf(outputBuilder, "%d\n", tentCount)
-	for _, t := range placements {
+
+	// Output the tents with final directions from the matching.
+	// The tents slice is in the same order as used in the matching.
+	for i, tpos := range tents {
+		tentR, tentC := tpos.r, tpos.c
+		treeIdx := matchTent[i]
+		dir := 'X'
+		if treeIdx != -1 {
+			tr, tc := trees[treeIdx].r, trees[treeIdx].c
+			dir = computeDirection(tentR, tentC, tr, tc)
+		}
 		// Output 1-indexed coordinates.
-		fmt.Fprintf(outputBuilder, "%d %d %c\n", t.r+1, t.c+1, t.dir)
+		fmt.Fprintf(outputBuilder, "%d %d %c\n", tentR+1, tentC+1, dir)
 	}
 
 	baseName := filepath.Base(inputFileName)

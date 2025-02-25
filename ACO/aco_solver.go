@@ -6,73 +6,94 @@ import (
 	"math"
 	"math/rand"
 	"os"
-	"os/signal" // added for signal handling
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall" // added for syscall signals
+	"syscall"
 	"time"
 )
 
-// Data structures
+// -----------------------------------------------------------------------------
+// Data Structures
+// -----------------------------------------------------------------------------
 
-// Grid holds the problem data.
 type Grid struct {
 	R, C      int
-	cells     [][]rune // grid of '.' or 'T'
+	cells     [][]rune
 	rowTarget []int
 	colTarget []int
 }
 
-// TentPlacement represents one tent placement.
+type Solution struct {
+	placements [][]bool   // which cells have tents
+	tentMatch  [][][2]int // for each tent cell, which tree (r,c) it claims, or (-1,-1) if unmatched
+	rowCounts  []int
+	colCounts  []int
+	violations int
+}
+
 type TentPlacement struct {
 	r, c int
-	dir  rune // U, D, L, R, or X
+	dir  rune
 }
 
-// Solution holds a candidate solution.
-type Solution struct {
-	placements [][]bool // same dimensions as grid; true means a tent is placed
-	violations int
-
-	// Bookkeeping for construction: current tent counts for rows and columns.
-	rowCounts []int
-	colCounts []int
+// We store local info about a cell candidate
+type cellCandidate struct {
+	r, c   int
+	weight float64
 }
 
-// Global ACO parameters.
+// -----------------------------------------------------------------------------
+// ACO Parameters
+// -----------------------------------------------------------------------------
+
 const (
 	numAnts     = 50
 	numIters    = 100
-	alpha       = 1.0 // pheromone importance
-	beta        = 1.5 // heuristic importance
-	evaporation = 0.3 // pheromone evaporation rate
-	Q           = 316 // pheromone deposit factor
+	alpha       = 1.0
+	beta        = 1.5
+	evaporation = 0.3
+	Q           = 316
+
+	BATCH_SIZE = 10 // how many tents we place before recalculating candidate weights
 )
 
-// readInts reads a slice of ints from a line.
+func abs(a int) int {
+	if a < 0 {
+		return -a
+	}
+	return a
+}
+
+// -----------------------------------------------------------------------------
+// Utility: parse input
+// -----------------------------------------------------------------------------
+
 func readInts(line string) ([]int, error) {
 	parts := strings.Fields(line)
-	res := make([]int, len(parts))
+	arr := make([]int, len(parts))
 	for i, p := range parts {
-		n, err := strconv.Atoi(p)
+		num, err := strconv.Atoi(p)
 		if err != nil {
 			return nil, err
 		}
-		res[i] = n
+		arr[i] = num
 	}
-	return res, nil
+	return arr, nil
 }
 
-// parseInput parses the problem input.
+func (g *Grid) inBounds(r, c int) bool {
+	return r >= 0 && r < g.R && c >= 0 && c < g.C
+}
+
 func parseInput(r *bufio.Reader) (*Grid, error) {
-	// First line: R and C.
 	line, err := r.ReadString('\n')
 	if err != nil {
-		return nil, fmt.Errorf("failed to read first line: %v", err)
+		return nil, err
 	}
 	parts := strings.Fields(line)
 	if len(parts) < 2 {
@@ -87,80 +108,160 @@ func parseInput(r *bufio.Reader) (*Grid, error) {
 		return nil, err
 	}
 
-	// Row targets.
 	line, err = r.ReadString('\n')
 	if err != nil {
-		return nil, fmt.Errorf("failed to read row targets: %v", err)
+		return nil, fmt.Errorf("failed to read row targets")
 	}
-	rowTargets, err := readInts(line)
+	rowT, err := readInts(line)
 	if err != nil {
 		return nil, err
 	}
-	if len(rowTargets) != R {
-		return nil, fmt.Errorf("row target count mismatch")
+	if len(rowT) != R {
+		return nil, fmt.Errorf("row target mismatch")
 	}
 
-	// Column targets.
 	line, err = r.ReadString('\n')
 	if err != nil {
-		return nil, fmt.Errorf("failed to read column targets: %v", err)
+		return nil, fmt.Errorf("failed to read col targets")
 	}
-	colTargets, err := readInts(line)
+	colT, err := readInts(line)
 	if err != nil {
 		return nil, err
 	}
-	if len(colTargets) != C {
-		return nil, fmt.Errorf("column target count mismatch")
+	if len(colT) != C {
+		return nil, fmt.Errorf("col target mismatch")
 	}
 
-	// Grid rows.
 	cells := make([][]rune, R)
 	for i := 0; i < R; i++ {
 		line, err = r.ReadString('\n')
 		if err != nil {
-			return nil, fmt.Errorf("failed to read grid row %d: %v", i, err)
+			return nil, fmt.Errorf("failed to read grid row %d", i)
 		}
 		line = strings.TrimSpace(line)
 		if len(line) != C {
-			return nil, fmt.Errorf("grid row %d length mismatch", i)
+			return nil, fmt.Errorf("grid row length mismatch at row %d", i)
 		}
 		cells[i] = []rune(line)
 	}
 
-	return &Grid{R: R, C: C, cells: cells, rowTarget: rowTargets, colTarget: colTargets}, nil
+	return &Grid{
+		R:         R,
+		C:         C,
+		cells:     cells,
+		rowTarget: rowT,
+		colTarget: colT,
+	}, nil
 }
 
-// inBounds returns whether (r,c) is within grid bounds.
-func (g *Grid) inBounds(r, c int) bool {
-	return r >= 0 && r < g.R && c >= 0 && c < g.C
+// -----------------------------------------------------------------------------
+// Local "one-tree" approach: each tent can claim at most one tree
+// -----------------------------------------------------------------------------
+
+// We'll track for each tree if it's used, so no two tents share the same tree
+type localTreeTracker struct {
+	used [][]bool
+	g    *Grid
 }
 
-// heuristic computes a cell’s heuristic value.
-// It rewards cells with adjacent trees and boosts the value if the corresponding row/col are under target.
-func (g *Grid) heuristic(r, c int, rowCount, colCount, rowTarget, colTarget int) float64 {
-	score := 0.1
+func newLocalTreeTracker(g *Grid) *localTreeTracker {
+	used := make([][]bool, g.R)
+	for i := 0; i < g.R; i++ {
+		used[i] = make([]bool, g.C)
+	}
+	return &localTreeTracker{used: used, g: g}
+}
+
+// claimFreeTree tries to find any free adjacent tree. If found, claims it and returns (rT, cT).
+// If no free tree, return (-1, -1).
+func (lt *localTreeTracker) claimFreeTree(r, c int) (int, int) {
 	neighbors := [][2]int{{r - 1, c}, {r + 1, c}, {r, c - 1}, {r, c + 1}}
-	for _, n := range neighbors {
-		nr, nc := n[0], n[1]
-		if g.inBounds(nr, nc) && g.cells[nr][nc] == 'T' {
-			score += 1.0
+	for _, nb := range neighbors {
+		nr, nc := nb[0], nb[1]
+		if lt.g.inBounds(nr, nc) && lt.g.cells[nr][nc] == 'T' && !lt.used[nr][nc] {
+			// claim
+			lt.used[nr][nc] = true
+			return nr, nc
 		}
 	}
-	// Boost if row/col are underfilled.
-	rowDeficit := float64(rowTarget - rowCount)
-	colDeficit := float64(colTarget - colCount)
-	if rowDeficit < 0 {
-		rowDeficit = 0
-	}
-	if colDeficit < 0 {
-		colDeficit = 0
-	}
-	score *= (1 + rowDeficit) * (1 + colDeficit)
-	return score
+	return -1, -1
 }
 
-// assignDirection chooses a pairing direction for a tent at (r,c) based on an adjacent tree.
-// It checks the four cardinal directions in order: U, D, L, R. If none are found, it returns 'X'.
+// -----------------------------------------------------------------------------
+// Evaluate: adjacency + row/col mismatch + unmatched Tents + unmatched Trees
+// -----------------------------------------------------------------------------
+
+func (g *Grid) evaluate(sol *Solution) int {
+	// 1. tent adjacency
+	dirs8 := [][2]int{
+		{-1, -1}, {-1, 0}, {-1, 1},
+		{0, -1}, {0, 1},
+		{1, -1}, {1, 0}, {1, 1},
+	}
+	violations := 0
+	for r := 0; r < g.R; r++ {
+		for c := 0; c < g.C; c++ {
+			if sol.placements[r][c] {
+				for _, d := range dirs8 {
+					nr, nc := r+d[0], c+d[1]
+					if g.inBounds(nr, nc) && sol.placements[nr][nc] {
+						violations++
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// 2. row/col mismatch
+	for r := 0; r < g.R; r++ {
+		violations += abs(sol.rowCounts[r] - g.rowTarget[r])
+	}
+	for c := 0; c < g.C; c++ {
+		violations += abs(sol.colCounts[c] - g.colTarget[c])
+	}
+
+	// 3. unmatched Tents + unmatched Trees
+	// Count how many tents are placed:
+	tentCount := 0
+	matchedTents := 0
+	for r := 0; r < g.R; r++ {
+		for c := 0; c < g.C; c++ {
+			if sol.placements[r][c] {
+				tentCount++
+				// if it's matched
+				if sol.tentMatch[r][c][0] != -1 {
+					matchedTents++
+				}
+			}
+		}
+	}
+	unmatchedTents := tentCount - matchedTents
+
+	// Count total trees, matchedTrees
+	totalTrees := 0
+	matchedTrees := 0
+	for r := 0; r < g.R; r++ {
+		for c := 0; c < g.C; c++ {
+			if g.cells[r][c] == 'T' {
+				totalTrees++
+			}
+		}
+	}
+	// Because each matched tent claims exactly 1 tree:
+	matchedTrees = matchedTents
+	unmatchedTrees := totalTrees - matchedTrees
+
+	violations += unmatchedTents
+	violations += unmatchedTrees
+
+	return violations
+}
+
+// -----------------------------------------------------------------------------
+// Assign direction for final output
+// -----------------------------------------------------------------------------
+
 func (g *Grid) assignDirection(r, c int) rune {
 	dirs := []struct {
 		dr, dc int
@@ -180,112 +281,50 @@ func (g *Grid) assignDirection(r, c int) rune {
 	return 'X'
 }
 
-// abs returns the absolute value of an integer.
-func abs(a int) int {
-	if a < 0 {
-		return -a
-	}
-	return a
-}
+// -----------------------------------------------------------------------------
+// Save best solution
+// -----------------------------------------------------------------------------
 
-// globalPairingViolations computes the pairing penalty using a global matching optimizer.
-func (g *Grid) globalPairingViolations(sol *Solution) int {
-	type pos struct{ r, c int }
-	var tents []pos
-	var trees []pos
-
-	// Gather all tent positions and tree positions.
+func saveBestSolution(bestSol *Solution, g *Grid, bestViolations int, inputFileName string) {
+	sb := &strings.Builder{}
+	tentCount := 0
+	var placements []TentPlacement
 	for r := 0; r < g.R; r++ {
 		for c := 0; c < g.C; c++ {
-			if sol.placements[r][c] {
-				tents = append(tents, pos{r, c})
-			}
-			if g.cells[r][c] == 'T' {
-				trees = append(trees, pos{r, c})
+			if bestSol.placements[r][c] {
+				tentCount++
+				d := g.assignDirection(r, c)
+				placements = append(placements, TentPlacement{r, c, d})
 			}
 		}
+	}
+	fmt.Fprintf(sb, "%d\n", bestViolations)
+	fmt.Fprintf(sb, "%d\n", tentCount)
+	for _, t := range placements {
+		fmt.Fprintf(sb, "%d %d %c\n", t.r+1, t.c+1, t.dir)
 	}
 
-	// Build an adjacency list: for each tent, list indices of trees that are adjacent (N, S, E, W).
-	adj := make([][]int, len(tents))
-	for i, t := range tents {
-		for j, tr := range trees {
-			if (abs(t.r-tr.r) == 1 && t.c == tr.c) || (abs(t.c-tr.c) == 1 && t.r == tr.r) {
-				adj[i] = append(adj[i], j)
-			}
-		}
+	baseName := filepath.Base(inputFileName)
+	outPath := filepath.Join("outputs", "output_"+baseName)
+	_ = os.MkdirAll("outputs", os.ModePerm)
+	f, err := os.Create(outPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating output: %v\n", err)
+		return
 	}
-
-	// DFS-based bipartite matching.
-	matchTree := make([]int, len(trees))
-	for i := range matchTree {
-		matchTree[i] = -1
+	defer f.Close()
+	_, err = f.WriteString(sb.String())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing solution: %v\n", err)
+	} else {
+		fmt.Printf("Solution written to %s\n", outPath)
 	}
-	var dfs func(u int, visited []bool) bool
-	dfs = func(u int, visited []bool) bool {
-		for _, v := range adj[u] {
-			if !visited[v] {
-				visited[v] = true
-				if matchTree[v] == -1 || dfs(matchTree[v], visited) {
-					matchTree[v] = u
-					return true
-				}
-			}
-		}
-		return false
-	}
-	matchingSize := 0
-	for u := 0; u < len(tents); u++ {
-		visited := make([]bool, len(trees))
-		if dfs(u, visited) {
-			matchingSize++
-		}
-	}
-
-	// Calculate penalty: each unmatched tent and unmatched tree adds a violation.
-	penalty := (len(tents) - matchingSize) + (len(trees) - matchingSize)
-	return penalty
 }
 
-// evaluate computes the total number of violations in a solution.
-func (g *Grid) evaluate(sol *Solution) int {
-	violations := 0
+// -----------------------------------------------------------------------------
+// Helper: canPlace checks adjacency among tents
+// -----------------------------------------------------------------------------
 
-	// 1. Adjacent tent conflicts (including diagonals).
-	dirs8 := [][2]int{
-		{-1, -1}, {-1, 0}, {-1, 1},
-		{0, -1}, {0, 1},
-		{1, -1}, {1, 0}, {1, 1},
-	}
-	for r := 0; r < g.R; r++ {
-		for c := 0; c < g.C; c++ {
-			if sol.placements[r][c] {
-				for _, d := range dirs8 {
-					nr, nc := r+d[0], c+d[1]
-					if g.inBounds(nr, nc) && sol.placements[nr][nc] {
-						violations++
-						break // Count at most one violation per tent.
-					}
-				}
-			}
-		}
-	}
-
-	// 2. Global pairing violations using maximum matching.
-	violations += g.globalPairingViolations(sol)
-
-	// 3. Row and column count mismatches.
-	for r := 0; r < g.R; r++ {
-		violations += int(math.Abs(float64(sol.rowCounts[r] - g.rowTarget[r])))
-	}
-	for c := 0; c < g.C; c++ {
-		violations += int(math.Abs(float64(sol.colCounts[c] - g.colTarget[c])))
-	}
-
-	return violations
-}
-
-// canPlace returns true if a tent can be placed at (r,c) without violating the non-adjacency rule.
 func (sol *Solution) canPlace(g *Grid, r, c int) bool {
 	dirs8 := [][2]int{
 		{-1, -1}, {-1, 0}, {-1, 1},
@@ -301,233 +340,186 @@ func (sol *Solution) canPlace(g *Grid, r, c int) bool {
 	return true
 }
 
-// updateCandidates processes a slice of cellCandidate concurrently and returns a new slice
-// with updated weights for those candidates that are still eligible.
-func updateCandidates(candidates []cellCandidate, sol *Solution, g *Grid, pheromone [][]float64) []cellCandidate {
-	numWorkers := runtime.NumCPU()
-	chunkSize := (len(candidates) + numWorkers - 1) / numWorkers
-	var wg sync.WaitGroup
-	outChan := make(chan cellCandidate, len(candidates))
+// -----------------------------------------------------------------------------
+// Heuristic for a cell
+// -----------------------------------------------------------------------------
 
-	for i := 0; i < len(candidates); i += chunkSize {
-		end := i + chunkSize
-		if end > len(candidates) {
-			end = len(candidates)
+func (g *Grid) heuristic(r, c int, rowCount, colCount, rowTarget, colTarget int) float64 {
+	score := 0.1
+	neighbors := [][2]int{{r - 1, c}, {r + 1, c}, {r, c - 1}, {r, c + 1}}
+	for _, nb := range neighbors {
+		nr, nc := nb[0], nb[1]
+		if g.inBounds(nr, nc) && g.cells[nr][nc] == 'T' {
+			score += 1.0
 		}
-		wg.Add(1)
-		go func(chunk []cellCandidate) {
-			defer wg.Done()
-			for _, cand := range chunk {
-				if sol.canPlace(g, cand.r, cand.c) {
-					h := g.heuristic(cand.r, cand.c, sol.rowCounts[cand.r], sol.colCounts[cand.c], g.rowTarget[cand.r], g.colTarget[cand.r])
-					cand.weight = math.Pow(pheromone[cand.r][cand.c], alpha) * math.Pow(h, beta)
-					outChan <- cand
-				}
-			}
-		}(candidates[i:end])
 	}
-	wg.Wait()
-	close(outChan)
-
-	newCandidates := make([]cellCandidate, 0, len(candidates))
-	for cand := range outChan {
-		newCandidates = append(newCandidates, cand)
+	rowDef := float64(rowTarget - rowCount)
+	colDef := float64(colTarget - colCount)
+	if rowDef < 0 {
+		rowDef = 0
 	}
-	return newCandidates
+	if colDef < 0 {
+		colDef = 0
+	}
+	score *= (1 + rowDef) * (1 + colDef)
+	return score
 }
 
-// cellCandidate represents a blank cell with an associated weight.
-type cellCandidate struct {
-	r, c   int
-	weight float64
-}
+// -----------------------------------------------------------------------------
+// ConstructSolution with local partial-matching approach
+// -----------------------------------------------------------------------------
 
-// constructSolution builds a candidate solution using a greedy randomized approach.
 func (g *Grid) constructSolution(pheromone [][]float64, rnd *rand.Rand) *Solution {
+	// init solution
 	sol := &Solution{
 		placements: make([][]bool, g.R),
+		tentMatch:  make([][][2]int, g.R),
 		rowCounts:  make([]int, g.R),
 		colCounts:  make([]int, g.C),
 	}
 	for i := 0; i < g.R; i++ {
 		sol.placements[i] = make([]bool, g.C)
+		sol.tentMatch[i] = make([][2]int, g.C)
+		for j := 0; j < g.C; j++ {
+			sol.tentMatch[i][j] = [2]int{-1, -1}
+		}
 	}
 
-	// Build candidate list of all blank cells.
-	candidates := []cellCandidate{}
+	// local tree usage
+	treeTracker := newLocalTreeTracker(g)
+
+	// build candidate list
+	candidates := make([]cellCandidate, 0)
 	for r := 0; r < g.R; r++ {
 		for c := 0; c < g.C; c++ {
 			if g.cells[r][c] == '.' {
-				h := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c], g.rowTarget[r], g.colTarget[r])
-				w := math.Pow(pheromone[r][c], alpha) * math.Pow(h, beta)
-				candidates = append(candidates, cellCandidate{r: r, c: c, weight: w})
+				hVal := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c], g.rowTarget[r], g.colTarget[c])
+				w := math.Pow(pheromone[r][c], alpha) * math.Pow(hVal, beta)
+				candidates = append(candidates, cellCandidate{r, c, w})
 			}
 		}
 	}
 
-	// Greedy randomized selection using roulette wheel.
-	for len(candidates) > 0 {
-		total := 0.0
-		for _, cand := range candidates {
-			total += cand.weight
-		}
-		if total == 0 {
-			break
-		}
-		threshold := rnd.Float64() * total
-		sum := 0.0
-		var selected cellCandidate
-		selectedIndex := -1
-		for i, cand := range candidates {
-			sum += cand.weight
-			if sum >= threshold {
-				selected = cand
-				selectedIndex = i
+	// Batch-based approach
+	for {
+		placedThisBatch := 0
+		for placedThisBatch < BATCH_SIZE && len(candidates) > 0 {
+			// Roulette
+			totalWeight := 0.0
+			for _, cand := range candidates {
+				totalWeight += cand.weight
+			}
+			if totalWeight < 1e-12 {
 				break
 			}
-		}
-		if selectedIndex == -1 {
-			break
-		}
-		// Place a tent if eligible and if row/col are under target.
-		if sol.canPlace(g, selected.r, selected.c) &&
-			(sol.rowCounts[selected.r] < g.rowTarget[selected.r] || sol.colCounts[selected.c] < g.colTarget[selected.c]) {
-			sol.placements[selected.r][selected.c] = true
-			sol.rowCounts[selected.r]++
-			sol.colCounts[selected.c]++
-		}
-		// Remove selected candidate.
-		candidates = append(candidates[:selectedIndex], candidates[selectedIndex+1:]...)
-		// Update remaining candidates concurrently.
-		candidates = updateCandidates(candidates, sol, g, pheromone)
-	}
-
-	// Repair phase: try to meet any remaining row or column targets.
-	// For rows:
-	for r := 0; r < g.R; r++ {
-		for sol.rowCounts[r] < g.rowTarget[r] {
-			bestC := -1
-			bestScore := -1.0
-			for c := 0; c < g.C; c++ {
-				if g.cells[r][c] == '.' && !sol.placements[r][c] && sol.canPlace(g, r, c) {
-					score := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c], g.rowTarget[r], g.colTarget[c])
-					if score > bestScore {
-						bestScore = score
-						bestC = c
-					}
+			threshold := rnd.Float64() * totalWeight
+			sum := 0.0
+			idx := -1
+			for i, cand := range candidates {
+				sum += cand.weight
+				if sum >= threshold {
+					idx = i
+					break
 				}
 			}
-			if bestC == -1 {
-				break
+			if idx == -1 {
+				idx = 0
 			}
-			sol.placements[r][bestC] = true
-			sol.rowCounts[r]++
-			sol.colCounts[bestC]++
-		}
-	}
-	// For columns:
-	for c := 0; c < g.C; c++ {
-		for sol.colCounts[c] < g.colTarget[c] {
-			bestR := -1
-			bestScore := -1.0
-			for r := 0; r < g.R; r++ {
-				if g.cells[r][c] == '.' && !sol.placements[r][c] && sol.canPlace(g, r, c) {
-					score := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c], g.rowTarget[r], g.colTarget[c])
-					if score > bestScore {
-						bestScore = score
-						bestR = r
-					}
+			chosen := candidates[idx]
+
+			// attempt to place
+			if sol.canPlace(g, chosen.r, chosen.c) &&
+				sol.rowCounts[chosen.r] < g.rowTarget[chosen.r] &&
+				sol.colCounts[chosen.c] < g.colTarget[chosen.c] {
+
+				sol.placements[chosen.r][chosen.c] = true
+				sol.rowCounts[chosen.r]++
+				sol.colCounts[chosen.c]++
+
+				// try to claim a free adjacent tree
+				tr, tc := treeTracker.claimFreeTree(chosen.r, chosen.c)
+				if tr != -1 {
+					sol.tentMatch[chosen.r][chosen.c] = [2]int{tr, tc}
+				} else {
+					// remain unmatched -> +1 violation for this tent
 				}
+				placedThisBatch++
 			}
-			if bestR == -1 {
-				break
+
+			// remove chosen from candidate list
+			candidates[idx] = candidates[len(candidates)-1]
+			candidates = candidates[:len(candidates)-1]
+		}
+
+		if placedThisBatch == 0 {
+			break
+		}
+
+		// Recalc weights for the remaining candidates
+		for i := 0; i < len(candidates); i++ {
+			cand := candidates[i]
+			// if adjacency fails, remove
+			if !sol.canPlace(g, cand.r, cand.c) {
+				candidates[i] = candidates[len(candidates)-1]
+				candidates = candidates[:len(candidates)-1]
+				i--
+				continue
 			}
-			sol.placements[bestR][c] = true
-			sol.rowCounts[bestR]++
-			sol.colCounts[c]++
+			// if row/col is already at or above target, remove
+			if sol.rowCounts[cand.r] >= g.rowTarget[cand.r] ||
+				sol.colCounts[cand.c] >= g.colTarget[cand.c] {
+				candidates[i] = candidates[len(candidates)-1]
+				candidates = candidates[:len(candidates)-1]
+				i--
+				continue
+			}
+			// recompute heuristic
+			newH := g.heuristic(cand.r, cand.c,
+				sol.rowCounts[cand.r], sol.colCounts[cand.c],
+				g.rowTarget[cand.r], g.colTarget[cand.c])
+			candidates[i].weight = math.Pow(pheromone[cand.r][cand.c], alpha) * math.Pow(newH, beta)
 		}
 	}
 
+	// final violation
 	sol.violations = g.evaluate(sol)
 	return sol
 }
 
-// saveBestSolution writes the current best solution to an output file.
-func saveBestSolution(bestSol *Solution, grid *Grid, bestViolations int, inputFileName string) {
-	outputBuilder := &strings.Builder{}
-	tentCount := 0
-	placements := []TentPlacement{}
-	for r := 0; r < grid.R; r++ {
-		for c := 0; c < grid.C; c++ {
-			if bestSol.placements[r][c] {
-				tentCount++
-				dir := grid.assignDirection(r, c)
-				placements = append(placements, TentPlacement{r: r, c: c, dir: dir})
-			}
-		}
-	}
-	fmt.Fprintf(outputBuilder, "%d\n", bestViolations)
-	fmt.Fprintf(outputBuilder, "%d\n", tentCount)
-	for _, t := range placements {
-		// Output 1-indexed coordinates.
-		fmt.Fprintf(outputBuilder, "%d %d %c\n", t.r+1, t.c+1, t.dir)
-	}
-
-	baseName := filepath.Base(inputFileName)
-	outputFileName := filepath.Join("outputs", "output_"+baseName)
-	os.MkdirAll("outputs", os.ModePerm)
-	outFile, err := os.Create(outputFileName)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating output file: %v\n", err)
-		return
-	}
-	defer outFile.Close()
-
-	_, err = outFile.WriteString(outputBuilder.String())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
-		return
-	}
-	fmt.Printf("Solution written to %s\n", outputFileName)
-}
+// -----------------------------------------------------------------------------
+// Main
+// -----------------------------------------------------------------------------
 
 func main() {
-	// Use all available cores.
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	// Set up input reader.
-	var inputReader *bufio.Reader
-	var inputFileName string
-	if len(os.Args) > 1 {
-		inputFileName = os.Args[1]
-		file, err := os.Open(inputFileName)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error opening input file: %v\n", err)
-			return
-		}
-		defer file.Close()
-		inputReader = bufio.NewReader(file)
-	} else {
-		inputReader = bufio.NewReader(os.Stdin)
-		inputFileName = "default.txt"
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <problemFile>\n", os.Args[0])
+		os.Exit(1)
 	}
+	inputFileName := os.Args[1]
 
-	// Parse input.
-	grid, err := parseInput(inputReader)
+	f, err := os.Open(inputFileName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing input: %v\n", err)
-		return
+		fmt.Fprintf(os.Stderr, "Error opening problem file: %v\n", err)
+		os.Exit(1)
+	}
+	defer f.Close()
+
+	reader := bufio.NewReader(f)
+	grid, err := parseInput(reader)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing problem: %v\n", err)
+		os.Exit(1)
 	}
 
-	// Initialize pheromone matrix.
+	// init pheromone
 	pheromone := make([][]float64, grid.R)
-	for i := 0; i < grid.R; i++ {
-		pheromone[i] = make([]float64, grid.C)
-		for j := 0; j < grid.C; j++ {
-			if grid.cells[i][j] == '.' {
-				pheromone[i][j] = 0.5
-			} else {
-				pheromone[i][j] = 0.0
+	for r := 0; r < grid.R; r++ {
+		pheromone[r] = make([]float64, grid.C)
+		for c := 0; c < grid.C; c++ {
+			if grid.cells[r][c] == '.' {
+				pheromone[r][c] = 0.5
 			}
 		}
 	}
@@ -535,15 +527,13 @@ func main() {
 	var bestSol *Solution
 	bestViolations := math.MaxInt32
 
-	// Global random generator for seeding.
 	globalRnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-	// Pre-generate seeds for ants.
 	seedList := make([]int64, numAnts)
 	for i := 0; i < numAnts; i++ {
 		seedList[i] = globalRnd.Int63()
 	}
 
-	// Set up signal handling for keyboard interruption.
+	// Keyboard interruption => save best
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -557,7 +547,7 @@ func main() {
 		os.Exit(1)
 	}()
 
-	// Main ACO loop.
+	// ACO loop
 	for iter := 0; iter < numIters; iter++ {
 		var wg sync.WaitGroup
 		solCh := make(chan *Solution, numAnts)
@@ -576,13 +566,11 @@ func main() {
 		wg.Wait()
 		close(solCh)
 
-		i := 0
-		for sol := range solCh {
-			ants[i] = sol
-			i++
+		idx := 0
+		for s := range solCh {
+			ants[idx] = s
+			idx++
 		}
-
-		// Find best solution in this iteration.
 		sort.Slice(ants, func(i, j int) bool {
 			return ants[i].violations < ants[j].violations
 		})
@@ -592,30 +580,30 @@ func main() {
 			bestSol = iterBest
 		}
 
-		// Pheromone evaporation.
-		for i := 0; i < grid.R; i++ {
-			for j := 0; j < grid.C; j++ {
-				pheromone[i][j] *= (1 - evaporation)
+		// evaporate
+		for rr := 0; rr < grid.R; rr++ {
+			for cc := 0; cc < grid.C; cc++ {
+				pheromone[rr][cc] *= (1 - evaporation)
 			}
 		}
 
-		// Reinforce using the top 10% (at least one) solutions.
+		// deposit on top 10%
 		topK := numAnts / 10
 		if topK < 1 {
 			topK = 1
 		}
-		for _, sol := range ants[:topK] {
-			deposit := Q / (float64(sol.violations) + 1)
-			for r := 0; r < grid.R; r++ {
-				for c := 0; c < grid.C; c++ {
-					if grid.cells[r][c] == '.' && sol.placements[r][c] {
-						pheromone[r][c] += deposit
+		for _, s := range ants[:topK] {
+			d := float64(Q) / (float64(s.violations) + 1)
+			for rr := 0; rr < grid.R; rr++ {
+				for cc := 0; cc < grid.C; cc++ {
+					if grid.cells[rr][cc] == '.' && s.placements[rr][cc] {
+						pheromone[rr][cc] += d
 					}
 				}
 			}
 		}
 
-		// Refresh seeds for next iteration.
+		// refresh seeds
 		for k := 0; k < numAnts; k++ {
 			seedList[k] = globalRnd.Int63()
 		}
@@ -623,6 +611,9 @@ func main() {
 		fmt.Printf("Iteration %d, best violation: %d\n", iter, iterBest.violations)
 	}
 
-	// Save final best solution.
-	saveBestSolution(bestSol, grid, bestViolations, inputFileName)
+	if bestSol != nil {
+		saveBestSolution(bestSol, grid, bestViolations, inputFileName)
+	} else {
+		fmt.Println("No solution found.")
+	}
 }
