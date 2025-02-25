@@ -499,6 +499,7 @@ func main() {
 	sol := grid.constructHeuristicSolution()
 	elapsed := time.Since(start)
 	fmt.Printf("Heuristic solution constructed in %v\n", elapsed)
+	fmt.Printf("Total violations: %d\n", sol.violations)
 
 	// Instead of using the naive assignDirection,
 	// perform a detailed bipartite matching so that each tent is matched with a unique tree.
