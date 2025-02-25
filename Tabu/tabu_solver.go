@@ -815,7 +815,7 @@ func main() {
 	}
 
 	// Tabu parameters
-	maxIter := 1000
+	maxIter := 1200
 	tabuTenure := 50
 	neighborhoodSize := 100
 
