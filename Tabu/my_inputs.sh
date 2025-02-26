@@ -13,7 +13,7 @@ for input_file in "$input_folder"/*; do
         echo "  -init=$heuristic_file"
         echo "  $input_file"
 
-        go run tabu_solver.go -init="$heuristic_file" "$input_file"
+        go run tabu_solver.go -init="$heuristic_file" "$input_file" >> "../iterationLog.txt"
     else
         echo "Warning: No matching heuristic file found for $input_file"
     fi

@@ -824,5 +824,11 @@ func main() {
 
 	// final output
 	fmt.Printf("Best solution => %d violations\n", bestSol.violations)
+	if bestSol.violations < initSol.violations {
+		difference := initSol.violations - bestSol.violations
+		fmt.Printf("Reduction of %d violations\n", difference)
+	} else {
+		fmt.Printf("No change in violation count\n")
+	}
 	saveBestSolution(bestSol, g, inputFileName)
 }
