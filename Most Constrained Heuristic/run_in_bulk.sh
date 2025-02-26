@@ -6,7 +6,7 @@ for i in {969..1024}; do
     fi
 
     echo "Running heuristic_solver.go on input_group$i.txt"
-    go run heuristic_solver.go "../algobowl_inputs/input_group$i.txt"
+    go run constraint_solver.go "../algobowl_inputs/input_group$i.txt"
 
     if [ $? -ne 0 ]; then
         echo "Error encountered while processing input_group$i.txt. Exiting."
