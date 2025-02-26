@@ -148,6 +148,7 @@ def ValidateTentAdjacency():
 try:
     ReadInputFile(input_filepath)
     ReadOutputFile(output_filepath)
+    print(f"\n{output_filepath}")
 except Exception as e:
     tb.print_exc()
     sys.exit(1)

@@ -1,0 +1,307 @@
+
+./submitted_outputs/output_from_994_to_1000.txt
+Claimed 115701 violations, had 115701 violations.
+Claimed 16229 tents, had 16229 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1001.txt
+Claimed 8 violations, had 8 violations.
+Claimed 3 tents, had 3 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1002.txt
+Claimed 46 violations, had 46 violations.
+Claimed 61 tents, had 61 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1003.txt
+Claimed 27650 violations, had 27650 violations.
+Claimed 18952 tents, had 18952 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1004.txt
+Claimed 4 violations, had 4 violations.
+Claimed 48 tents, had 48 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1005.txt
+Claimed 99 violations, had 99 violations.
+Claimed 48 tents, had 48 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1006.txt
+Claimed 0 violations, had 0 violations.
+Claimed 104 tents, had 104 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1007.txt
+Claimed 0 violations, had 0 violations.
+Claimed 5 tents, had 5 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1008.txt
+Claimed 4 violations, had 4 violations.
+Claimed 5 tents, had 5 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1009.txt
+Claimed 23 violations, had 23 violations.
+Claimed 38 tents, had 38 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1010.txt
+Claimed 34 violations, had 34 violations.
+Claimed 17 tents, had 17 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1011.txt
+Claimed 10 violations, had 10 violations.
+Claimed 14 tents, had 14 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1012.txt
+Claimed 51044 violations, had 51044 violations.
+Claimed 24639 tents, had 24639 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1013.txt
+Claimed 5 violations, had 5 violations.
+Claimed 57 tents, had 57 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1014.txt
+Claimed 289 violations, had 289 violations.
+Claimed 85 tents, had 85 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1015.txt
+Claimed 0 violations, had 0 violations.
+Claimed 33 tents, had 33 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1016.txt
+Claimed 151429 violations, had 151429 violations.
+Claimed 45153 tents, had 45153 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1017.txt
+Claimed 17506 violations, had 17506 violations.
+Claimed 19999 tents, had 19999 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1018.txt
+Claimed 10189 violations, had 10189 violations.
+Claimed 10261 tents, had 10261 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1019.txt
+Claimed 111168 violations, had 111168 violations.
+Claimed 19396 tents, had 19396 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1021.txt
+Claimed 26960 violations, had 26960 violations.
+Claimed 13563 tents, had 13563 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1022.txt
+Claimed 19914 violations, had 19914 violations.
+Claimed 5208 tents, had 5208 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1023.txt
+Claimed 15671 violations, had 15671 violations.
+Claimed 2063 tents, had 2063 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_1024.txt
+Claimed 17897 violations, had 17897 violations.
+Claimed 2720 tents, had 2720 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_963.txt
+Claimed 64 violations, had 64 violations.
+Claimed 155 tents, had 155 tents.
+Valid
+Traceback (most recent call last):
+  File "C:\Users\Brian\Documents\Mines\CSCI_406\Projects\Algobowl\Zhuoyi_Algo\AlgoBowl\Python_Verification.py", line 163, in <module>
+    raise Exception(f"Invalid violations count: Claimed {claimed_violations} violations, but had {actual_violations} violations.")
+Exception: Invalid violations count: Claimed 76000
+ violations, but had 135717 violations.
+
+./submitted_outputs/output_from_994_to_964.txt
+
+./submitted_outputs/output_from_994_to_965.txt
+Claimed 24718 violations, had 24718 violations.
+Claimed 11216 tents, had 11216 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_966.txt
+Claimed 72977 violations, had 72977 violations.
+Claimed 18839 tents, had 18839 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_967.txt
+Claimed 67870 violations, had 67870 violations.
+Claimed 17295 tents, had 17295 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_968.txt
+Claimed 251 violations, had 251 violations.
+Claimed 264 tents, had 264 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_969.txt
+Claimed 69272 violations, had 69272 violations.
+Claimed 18366 tents, had 18366 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_970.txt
+Claimed 172 violations, had 172 violations.
+Claimed 251 tents, had 251 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_971.txt
+Claimed 37000 violations, had 37000 violations.
+Claimed 1000 tents, had 1000 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_972.txt
+Claimed 2583 violations, had 2583 violations.
+Claimed 253 tents, had 253 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_973.txt
+Claimed 22557 violations, had 22557 violations.
+Claimed 19105 tents, had 19105 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_974.txt
+Claimed 18 violations, had 18 violations.
+Claimed 7 tents, had 7 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_975.txt
+Claimed 13 violations, had 13 violations.
+Claimed 30 tents, had 30 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_976.txt
+Claimed 67 violations, had 67 violations.
+Claimed 39 tents, had 39 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_977.txt
+Claimed 71821 violations, had 71821 violations.
+Claimed 12906 tents, had 12906 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_978.txt
+Claimed 285 violations, had 285 violations.
+Claimed 209 tents, had 209 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_979.txt
+Claimed 10513 violations, had 10513 violations.
+Claimed 5093 tents, had 5093 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_980.txt
+Claimed 6858 violations, had 6858 violations.
+Claimed 17875 tents, had 17875 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_981.txt
+Claimed 21331 violations, had 21331 violations.
+Claimed 7844 tents, had 7844 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_982.txt
+Claimed 30068 violations, had 30068 violations.
+Claimed 2569 tents, had 2569 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_983.txt
+Claimed 17491 violations, had 17491 violations.
+Claimed 15959 tents, had 15959 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_984.txt
+Claimed 129 violations, had 129 violations.
+Claimed 87 tents, had 87 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_985.txt
+Claimed 8 violations, had 8 violations.
+Claimed 8 tents, had 8 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_986.txt
+Claimed 74819 violations, had 74819 violations.
+Claimed 18914 tents, had 18914 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_987.txt
+Claimed 5875 violations, had 5875 violations.
+Claimed 2538 tents, had 2538 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_988.txt
+Claimed 89548 violations, had 89548 violations.
+Claimed 31460 tents, had 31460 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_989.txt
+Claimed 4 violations, had 4 violations.
+Claimed 15 tents, had 15 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_990.txt
+Claimed 88844 violations, had 88844 violations.
+Claimed 33640 tents, had 33640 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_991.txt
+Claimed 4990 violations, had 4990 violations.
+Claimed 15314 tents, had 15314 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_992.txt
+Claimed 466 violations, had 466 violations.
+Claimed 487 tents, had 487 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_993.txt
+Claimed 1050 violations, had 1050 violations.
+Claimed 2219 tents, had 2219 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_994.txt
+Claimed 63749 violations, had 63749 violations.
+Claimed 21139 tents, had 21139 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_995.txt
+Claimed 47597 violations, had 47597 violations.
+Claimed 18878 tents, had 18878 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_996.txt
+Claimed 81432 violations, had 81432 violations.
+Claimed 38868 tents, had 38868 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_997.txt
+Claimed 15 violations, had 15 violations.
+Claimed 57 tents, had 57 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_998.txt
+Claimed 2386 violations, had 2386 violations.
+Claimed 2024 tents, had 2024 tents.
+Valid
+
+./submitted_outputs/output_from_994_to_999.txt
+Claimed 164 violations, had 164 violations.
+Claimed 8 tents, had 8 tents.
+Valid
