@@ -1,12 +1,8 @@
 #!/bin/bash
 
-for i in {963..1024}; do
-    if [ "$i" -eq 994 ]; then
-        continue  # Skip input_group994
-    fi
-
+for i in {994..994}; do
     echo "Running flex_solver.go on input_group$i.txt"
-    go run flex_solver.go "../algobowl_inputs/input_group$i.txt" "future"
+    go run flex_solver.go "../algobowl_inputs/input_group$i.txt" "tree"
 
     if [ $? -ne 0 ]; then
         echo "Error encountered while processing input_group$i.txt. Exiting."
