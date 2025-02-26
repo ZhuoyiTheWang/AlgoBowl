@@ -106,6 +106,7 @@ Group 973:
   Method: most_constrained, Performance: 23755.0
   Method: original, Performance: 22557.0
   Method: row, Performance: 53692.0
+  Method: tabu, Performance: 22557.0
   Method: tree, Performance: 33352.0
 --> Best Method: original (Performance: 22557.0)
 
@@ -403,8 +404,9 @@ Group 1003:
   Method: most_constrained, Performance: 38505.0
   Method: original, Performance: 29782.0
   Method: row, Performance: 46386.0
+  Method: tabu, Performance: 27650.0
   Method: tree, Performance: 38041.0
---> Best Method: original (Performance: 29782.0)
+--> Best Method: tabu (Performance: 27650.0)
 
 Group 1004:
   Method: adjacency, Performance: 52.0

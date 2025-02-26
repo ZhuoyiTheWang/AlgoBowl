@@ -815,8 +815,8 @@ func main() {
 	}
 
 	// Tabu parameters
-	maxIter := 1000000
-	tabuTenure := 3
+	maxIter := 10000
+	tabuTenure := 200
 	neighborhoodSize := 100
 
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
