@@ -144,7 +144,6 @@ func abs(a int) int {
 // 1. Each tent that has any adjacent (8-neighbor) tent adds 1 violation.
 // 2. Using bipartite matching, each unmatched tent or tree adds 1 violation.
 // 3. For each row and column, the absolute difference between the tent count and target adds 1 violation per extra/missing tent.
-// Note: For the flexible heuristic, we do NOT include the local blocking cost in the final evaluation.
 func (g *Grid) evaluate(sol *Solution) int {
 	// 1. Adjacency violations.
 	adjViol := 0
@@ -535,11 +534,12 @@ func main() {
 		fmt.Fprintf(outputBuilder, "%d %d %c\n", tentR+1, tentC+1, dir)
 	}
 
-	// Save output in an "argument" folder with the heuristic type in the filename.
-	outputFolder := "argument"
+	// Instead of including the heuristic in the file name, save the output in a folder named after the heuristic.
+	outputFolder := heuristicType
 	os.MkdirAll(outputFolder, os.ModePerm)
 	baseName := filepath.Base(inputFileName)
-	outputFileName := filepath.Join(outputFolder, "output_"+heuristicType+"_"+baseName)
+	// The output file name remains the same as before.
+	outputFileName := filepath.Join(outputFolder, "output_"+baseName)
 	outFile, err := os.Create(outputFileName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating output file: %v\n", err)
