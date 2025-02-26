@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for i in {969..1024}; do
+for i in {963..1024}; do
     if [ "$i" -eq 994 ]; then
         continue  # Skip input_group994
     fi
