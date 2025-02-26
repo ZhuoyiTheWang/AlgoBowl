@@ -31,9 +31,9 @@ type Grid struct {
 // Solution represents a candidate solution.
 type Solution struct {
 	placements [][]bool // true means a tent is placed at that cell
-	rowCounts  []int    // current tent counts per row
-	colCounts  []int    // current tent counts per column
-	violations int      // simple evaluation: sum of row/column mismatches
+	rowCounts  []int    // current tent count per row
+	colCounts  []int    // current tent count per column
+	violations int      // overall violation count (computed using all rules)
 }
 
 // -----------------------------
@@ -43,18 +43,18 @@ type Solution struct {
 // readInts parses a line of space-separated integers.
 func readInts(line string) ([]int, error) {
 	parts := strings.Fields(line)
-	res := make([]int, len(parts))
+	nums := make([]int, len(parts))
 	for i, s := range parts {
 		n, err := strconv.Atoi(s)
 		if err != nil {
 			return nil, err
 		}
-		res[i] = n
+		nums[i] = n
 	}
-	return res, nil
+	return nums, nil
 }
 
-// parseInput reads the puzzle input from the given reader.
+// parseInput reads the puzzle input from the provided reader.
 func parseInput(r *bufio.Reader) (*Grid, error) {
 	// First line: number of rows and columns.
 	line, err := r.ReadString('\n')
@@ -123,24 +123,121 @@ func parseInput(r *bufio.Reader) (*Grid, error) {
 	}, nil
 }
 
-// inBounds returns true if (r,c) lies within the grid.
+// inBounds returns whether (r,c) is within grid bounds.
 func (g *Grid) inBounds(r, c int) bool {
 	return r >= 0 && r < g.R && c >= 0 && c < g.C
 }
 
+func abs(a int) int {
+	if a < 0 {
+		return -a
+	}
+	return a
+}
+
 // -----------------------------
-// Future Flexibility Heuristic
+// Overall Evaluation Function
 // -----------------------------
 
-// futureFlexibilityHeuristic computes a score for placing a tent at (r,c) based on two components:
-// 1. Tree bonus: adds 2.0 for each cardinal neighbor (up, down, left, right) that is a tree,
-//    and 1.0 for each diagonal neighbor that is a tree.
-// 2. Future impact cost: counts the number of available (blank and unoccupied) cells in the 8-neighborhood
-//    that would be blocked by placing a tent at (r,c).
-// The net score is bonus minus cost. A higher score is preferable.
-func (g *Grid) futureFlexibilityHeuristic(r, c int, sol *Solution) float64 {
+// evaluate computes the overall violation score of a solution.
+// It adds three kinds of penalties:
+// 1. Each tent that has any adjacent (8-neighbor) tent adds 1 violation.
+// 2. Using bipartite matching, each unmatched tent or tree adds 1 violation.
+// 3. For each row and column, the absolute difference between the tent count and target adds 1 violation per extra/missing tent.
+// Note: For the flexible heuristic, we do NOT include the local blocking cost in the final evaluation.
+func (g *Grid) evaluate(sol *Solution) int {
+	// 1. Adjacency violations.
+	adjViol := 0
+	dirs8 := [][2]int{{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}}
+	for r := 0; r < g.R; r++ {
+		for c := 0; c < g.C; c++ {
+			if sol.placements[r][c] {
+				for _, d := range dirs8 {
+					nr, nc := r+d[0], c+d[1]
+					if g.inBounds(nr, nc) && sol.placements[nr][nc] {
+						adjViol++
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Pairing violations.
+	pairViol := g.globalPairingViolations(sol)
+
+	// 3. Row/column mismatches.
+	rowMismatch := 0
+	for r := 0; r < g.R; r++ {
+		rowMismatch += abs(sol.rowCounts[r] - g.rowTarget[r])
+	}
+	colMismatch := 0
+	for c := 0; c < g.C; c++ {
+		colMismatch += abs(sol.colCounts[c] - g.colTarget[c])
+	}
+
+	return adjViol + pairViol + rowMismatch + colMismatch
+}
+
+// globalPairingViolations computes the pairing penalty using a bipartite matching between placed tents and trees.
+func (g *Grid) globalPairingViolations(sol *Solution) int {
+	var tents []pos
+	var trees []pos
+	for r := 0; r < g.R; r++ {
+		for c := 0; c < g.C; c++ {
+			if sol.placements[r][c] {
+				tents = append(tents, pos{r, c})
+			}
+			if g.cells[r][c] == 'T' {
+				trees = append(trees, pos{r, c})
+			}
+		}
+	}
+	adj := make([][]int, len(tents))
+	for i, t := range tents {
+		for j, tr := range trees {
+			if (abs(t.r-tr.r) == 1 && t.c == tr.c) || (abs(t.c-tr.c) == 1 && t.r == tr.r) {
+				adj[i] = append(adj[i], j)
+			}
+		}
+	}
+	matchTree := make([]int, len(trees))
+	for i := range matchTree {
+		matchTree[i] = -1
+	}
+	var dfs func(u int, visited []bool) bool
+	dfs = func(u int, visited []bool) bool {
+		for _, v := range adj[u] {
+			if !visited[v] {
+				visited[v] = true
+				if matchTree[v] == -1 || dfs(matchTree[v], visited) {
+					matchTree[v] = u
+					return true
+				}
+			}
+		}
+		return false
+	}
+	matchingSize := 0
+	for u := 0; u < len(tents); u++ {
+		visited := make([]bool, len(trees))
+		if dfs(u, visited) {
+			matchingSize++
+		}
+	}
+	return (len(tents) - matchingSize) + (len(trees) - matchingSize)
+}
+
+// -----------------------------
+// Flexible (Future) Heuristic
+// -----------------------------
+
+// futureFlexibilityHeuristic scores a candidate cell (r,c) by giving a bonus for nearby trees
+// while subtracting a cost equal to the number of available neighbor cells that would be blocked
+// if a tent is placed here. (Cardinal neighbors get a bonus of 2.0 and diagonal ones 1.0.)
+// This score is used solely for candidate selection; it is not added to the overall violation count.
+func futureFlexibilityHeuristic(r, c int, sol *Solution, g *Grid) float64 {
 	bonus := 0.0
-	// Cardinal neighbors.
 	cardinals := [][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
 	for _, d := range cardinals {
 		nr, nc := r+d[0], c+d[1]
@@ -148,7 +245,6 @@ func (g *Grid) futureFlexibilityHeuristic(r, c int, sol *Solution) float64 {
 			bonus += 2.0
 		}
 	}
-	// Diagonal neighbors.
 	diagonals := [][2]int{{-1, -1}, {-1, 1}, {1, -1}, {1, 1}}
 	for _, d := range diagonals {
 		nr, nc := r+d[0], c+d[1]
@@ -158,7 +254,7 @@ func (g *Grid) futureFlexibilityHeuristic(r, c int, sol *Solution) float64 {
 	}
 
 	cost := 0.0
-	// Count available neighbors (in all 8 directions) that are blank and unoccupied.
+	// Count available (blank and unoccupied) neighbor cells that will be blocked.
 	for dr := -1; dr <= 1; dr++ {
 		for dc := -1; dc <= 1; dc++ {
 			if dr == 0 && dc == 0 {
@@ -174,13 +270,63 @@ func (g *Grid) futureFlexibilityHeuristic(r, c int, sol *Solution) float64 {
 }
 
 // -----------------------------
-// Greedy Construction Using Future Flexibility Heuristic
+// Other Heuristic Functions
 // -----------------------------
 
-// constructFutureFlexibilitySolution builds a candidate solution by repeatedly
-// selecting the blank cell (that does not exceed row/column targets) with the highest
-// futureFlexibilityHeuristic score.
-func (g *Grid) constructFutureFlexibilitySolution() *Solution {
+// adjacencyHeuristic focuses on avoiding adjacent tents.
+func adjacencyHeuristic(r, c int, sol *Solution, g *Grid) float64 {
+	dirs8 := [][2]int{{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}}
+	for _, d := range dirs8 {
+		nr, nc := r+d[0], c+d[1]
+		if g.inBounds(nr, nc) && sol.placements[nr][nc] {
+			return -1.0
+		}
+	}
+	return 0.0
+}
+
+// treeMatchingHeuristic focuses on good tree–tent pairing.
+func treeMatchingHeuristic(r, c int, sol *Solution, g *Grid) float64 {
+	score := 0.0
+	if g.inBounds(r-1, c) && g.cells[r-1][c] == 'T' {
+		score++
+	}
+	if g.inBounds(r+1, c) && g.cells[r+1][c] == 'T' {
+		score++
+	}
+	if g.inBounds(r, c-1) && g.cells[r][c-1] == 'T' {
+		score++
+	}
+	if g.inBounds(r, c+1) && g.cells[r][c+1] == 'T' {
+		score++
+	}
+	return score
+}
+
+// rowColumnHeuristic focuses on meeting row and column targets.
+func rowColumnHeuristic(r, c int, sol *Solution, g *Grid) float64 {
+	rowDef := float64(g.rowTarget[r] - sol.rowCounts[r])
+	colDef := float64(g.colTarget[c] - sol.colCounts[c])
+	if rowDef < 0 {
+		rowDef = 0
+	}
+	if colDef < 0 {
+		colDef = 0
+	}
+	return rowDef + colDef
+}
+
+// -----------------------------
+// Generic Greedy Construction
+// -----------------------------
+
+// HeuristicFunc is a type for candidate scoring functions.
+type HeuristicFunc func(r, c int, sol *Solution, g *Grid) float64
+
+// constructSolution uses the provided heuristic function to guide greedy placement.
+// It places tents one by one (without exceeding row/column targets) using the candidate with the highest score.
+// Once completed, the overall violation count is calculated using the full evaluation function.
+func (g *Grid) constructSolution(h HeuristicFunc) *Solution {
 	sol := &Solution{
 		placements: make([][]bool, g.R),
 		rowCounts:  make([]int, g.R),
@@ -189,7 +335,6 @@ func (g *Grid) constructFutureFlexibilitySolution() *Solution {
 	for i := 0; i < g.R; i++ {
 		sol.placements[i] = make([]bool, g.C)
 	}
-
 	improvement := true
 	for improvement {
 		improvement = false
@@ -203,11 +348,10 @@ func (g *Grid) constructFutureFlexibilitySolution() *Solution {
 				if sol.placements[r][c] {
 					continue
 				}
-				// Do not exceed the row/column targets.
 				if sol.rowCounts[r] >= g.rowTarget[r] || sol.colCounts[c] >= g.colTarget[c] {
 					continue
 				}
-				score := g.futureFlexibilityHeuristic(r, c, sol)
+				score := h(r, c, sol, g)
 				if score > bestScore {
 					bestScore = score
 					bestR = r
@@ -222,25 +366,18 @@ func (g *Grid) constructFutureFlexibilitySolution() *Solution {
 			improvement = true
 		}
 	}
-	// For evaluation, simply sum the absolute differences between placed tents and targets.
-	violations := 0
-	for r := 0; r < g.R; r++ {
-		violations += int(math.Abs(float64(sol.rowCounts[r] - g.rowTarget[r])))
-	}
-	for c := 0; c < g.C; c++ {
-		violations += int(math.Abs(float64(sol.colCounts[c] - g.colTarget[c])))
-	}
-	sol.violations = violations
+	// IMPORTANT: The overall violation calculation follows the full problem rules.
+	sol.violations = g.evaluate(sol)
 	return sol
 }
 
 // -----------------------------
-// Bipartite Matching & Direction Assignment (for Output)
+// Bipartite Matching & Output Direction
 // -----------------------------
 
 // computeBipartiteMatchingDetailed pairs each placed tent with an adjacent tree (cardinally).
-// It returns a slice matchTent where matchTent[i] is the index of the tree paired with the ith tent,
-// as well as slices of positions for tents and trees.
+// It returns a slice matchTent (where matchTent[i] is the index of the tree paired with the i-th tent)
+// as well as slices of tent and tree positions.
 func (g *Grid) computeBipartiteMatchingDetailed(sol *Solution) (matchTent []int, tents []pos, trees []pos) {
 	for r := 0; r < g.R; r++ {
 		for c := 0; c < g.C; c++ {
@@ -318,20 +455,15 @@ func computeDirection(tentR, tentC, treeR, treeC int) rune {
 	return 'X'
 }
 
-func abs(a int) int {
-	if a < 0 {
-		return -a
-	}
-	return a
-}
-
 // -----------------------------
 // Main Function
 // -----------------------------
 
 func main() {
+	// Expect: first argument = input file, second argument = heuristic type ("adjacency", "tree", "row", "future")
 	var inputReader *bufio.Reader
 	var inputFileName string
+	heuristicType := "adjacency" // default
 	if len(os.Args) > 1 {
 		inputFileName = os.Args[1]
 		file, err := os.Open(inputFileName)
@@ -345,6 +477,9 @@ func main() {
 		inputReader = bufio.NewReader(os.Stdin)
 		inputFileName = "default.txt"
 	}
+	if len(os.Args) > 2 {
+		heuristicType = os.Args[2]
+	}
 
 	grid, err := parseInput(inputReader)
 	if err != nil {
@@ -352,14 +487,30 @@ func main() {
 		return
 	}
 
+	// Select the heuristic based on the argument.
+	var h func(r, c int, sol *Solution, g *Grid) float64
+	switch strings.ToLower(heuristicType) {
+	case "adjacency":
+		h = adjacencyHeuristic
+	case "tree":
+		h = treeMatchingHeuristic
+	case "row":
+		h = rowColumnHeuristic
+	case "future":
+		h = futureFlexibilityHeuristic
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown heuristic type '%s'. Using default (adjacency).\n", heuristicType)
+		h = adjacencyHeuristic
+	}
+
 	start := time.Now()
-	sol := grid.constructFutureFlexibilitySolution()
+	sol := grid.constructSolution(h)
 	elapsed := time.Since(start)
-	fmt.Printf("Future Flexibility Solution constructed in %v\n", elapsed)
-	fmt.Printf("Row/Column mismatch sum: %d\n", sol.violations)
+	fmt.Printf("Solution constructed in %v using %s heuristic\n", elapsed, heuristicType)
+	fmt.Printf("Overall violations: %d\n", sol.violations)
 
+	// Perform bipartite matching for output directions.
 	matchTent, tents, trees := grid.computeBipartiteMatchingDetailed(sol)
-
 	outputBuilder := &strings.Builder{}
 	tentCount := 0
 	for r := 0; r < grid.R; r++ {
@@ -369,9 +520,10 @@ func main() {
 			}
 		}
 	}
+	// Output overall violation count and tent count.
 	fmt.Fprintf(outputBuilder, "%d\n", sol.violations)
 	fmt.Fprintf(outputBuilder, "%d\n", tentCount)
-
+	// Output each tent's (1-indexed) position and assigned direction.
 	for i, tpos := range tents {
 		tentR, tentC := tpos.r, tpos.c
 		treeIdx := matchTent[i]
@@ -383,16 +535,17 @@ func main() {
 		fmt.Fprintf(outputBuilder, "%d %d %c\n", tentR+1, tentC+1, dir)
 	}
 
+	// Save output in an "argument" folder with the heuristic type in the filename.
+	outputFolder := "argument"
+	os.MkdirAll(outputFolder, os.ModePerm)
 	baseName := filepath.Base(inputFileName)
-	outputFileName := filepath.Join("outputs", "output_"+baseName)
-	os.MkdirAll("outputs", os.ModePerm)
+	outputFileName := filepath.Join(outputFolder, "output_"+heuristicType+"_"+baseName)
 	outFile, err := os.Create(outputFileName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating output file: %v\n", err)
 		return
 	}
 	defer outFile.Close()
-
 	_, err = outFile.WriteString(outputBuilder.String())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
