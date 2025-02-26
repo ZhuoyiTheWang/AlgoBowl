@@ -735,8 +735,8 @@ func saveBestSolution(bestSol *Solution, g *Grid, inputFileName string) {
 	}
 
 	baseName := filepath.Base(inputFileName)
-	outFileName := filepath.Join("outputs", "output_tabu_"+baseName)
-	os.MkdirAll("outputs", os.ModePerm)
+	outFileName := filepath.Join("tabu", "output_"+baseName)
+	os.MkdirAll("tabu", os.ModePerm)
 
 	f, err := os.Create(outFileName)
 	if err != nil {

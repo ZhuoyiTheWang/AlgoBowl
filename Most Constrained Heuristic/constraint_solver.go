@@ -458,7 +458,7 @@ func (g *Grid) constructMostConstrainedSolution() *Solution {
 
 		// --- Choose the most constrained row or column ---
 		bestCandidateCount := math.MaxInt32
-		bestIsRow := true  // true means best index is a row, false means a column
+		bestIsRow := true // true means best index is a row, false means a column
 		bestIndex := -1
 
 		// Examine rows.
@@ -618,8 +618,8 @@ func main() {
 	}
 
 	baseName := filepath.Base(inputFileName)
-	outputFileName := filepath.Join("outputs", "output_"+baseName)
-	os.MkdirAll("outputs", os.ModePerm)
+	outputFileName := filepath.Join("most_constrained", "output_"+baseName)
+	os.MkdirAll("most_constrained", os.ModePerm)
 	outFile, err := os.Create(outputFileName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating output file: %v\n", err)
