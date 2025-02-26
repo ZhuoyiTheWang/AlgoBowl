@@ -37,7 +37,7 @@ def main():
             # Use a regex to find the group number
             # e.g., if filename = "output_tabu_input_group963"
             # we'll look for the pattern "group(\d+)"
-            match = re.search(r"group(\d+)", filename)
+            match = re.search(r"(\d{3,4})(?=\.\w+$)", filename)
             if match:
                 group_number = match.group(1)
                 

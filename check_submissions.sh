@@ -1,6 +1,6 @@
 #!/bin/bash
 
-submissions_folder="./submitted_outputs"
+submissions_folder="./all_outputs/submitted"
 input_folder="./algobowl_inputs"
 combined_results="./submission_verification_results.txt"
 
