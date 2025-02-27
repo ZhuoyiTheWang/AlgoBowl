@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,10 +11,119 @@ import (
 )
 
 // -----------------------------
-// Data Structures
+// DSU (Disjoint Set Union) Data Structure
 // -----------------------------
 
-// pos is a simple struct representing a grid position.
+// DSU represents Disjoint Set Union for clustering trees.
+type DSU struct {
+	Parent, Rank []int
+}
+
+// Creates a new DSU instance for `n` elements.
+func NewDSU(n int) *DSU {
+	dsu := &DSU{
+		Parent: make([]int, n),
+		Rank:   make([]int, n),
+	}
+	for i := range dsu.Parent {
+		dsu.Parent[i] = i
+	}
+	return dsu
+}
+
+// Find operation with path compression.
+func (dsu *DSU) Find(x int) int {
+	if dsu.Parent[x] != x {
+		dsu.Parent[x] = dsu.Find(dsu.Parent[x]) // Path compression
+	}
+	return dsu.Parent[x]
+}
+
+// Union operation with rank optimization.
+func (dsu *DSU) Union(x, y int) {
+	rootX, rootY := dsu.Find(x), dsu.Find(y)
+	if rootX != rootY {
+		if dsu.Rank[rootX] > dsu.Rank[rootY] {
+			dsu.Parent[rootY] = rootX
+		} else {
+			dsu.Parent[rootX] = rootY
+			if dsu.Rank[rootX] == dsu.Rank[rootY] {
+				dsu.Rank[rootY]++
+			}
+		}
+	}
+}
+
+func clusterTrees(grid *Grid) *DSU {
+	dsu := NewDSU(grid.R * grid.C)
+	directions := []pos{
+		{-1, 0}, {1, 0}, {0, -1}, {0, 1},
+	}
+
+	for r := 0; r < grid.R; r++ {
+		for c := 0; c < grid.C; c++ {
+			if grid.cells[r][c] == 'T' {
+				for _, d := range directions {
+					nr, nc := r+d.r, c+d.c
+					if grid.inBounds(nr, nc) && grid.cells[nr][nc] == 'T' {
+						dsu.Union(index(r, c, grid.C), index(nr, nc, grid.C))
+					}
+				}
+			}
+		}
+	}
+
+	return dsu
+}
+
+func placeTents(grid *Grid, dsu *DSU) *Solution {
+	directions := []pos{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
+	pairedTrees := make(map[int]bool)
+	sol := &Solution{
+		placements: make([][]bool, grid.R),
+		rowCounts:  make([]int, grid.R),
+		colCounts:  make([]int, grid.C),
+	}
+
+	for i := 0; i < grid.R; i++ {
+		sol.placements[i] = make([]bool, grid.C)
+	}
+
+	for r := 0; r < grid.R; r++ {
+		for c := 0; c < grid.C; c++ {
+			if grid.cells[r][c] == 'T' {
+				root := dsu.Find(index(r, c, grid.C))
+
+				if pairedTrees[root] {
+					continue
+				}
+
+				for _, d := range directions {
+					nr, nc := r+d.r, c+d.c
+					if grid.inBounds(nr, nc) && grid.cells[nr][nc] == '.' && sol.canPlace(grid, nr, nc) {
+						sol.placements[nr][nc] = true
+						sol.rowCounts[nr]++
+						sol.colCounts[nc]++
+						pairedTrees[root] = true
+						break
+					}
+				}
+			}
+		}
+	}
+
+	sol.violations = grid.evaluate(sol)
+	return sol
+}
+
+func index(r, c, cols int) int {
+	return r*cols + c
+}
+
+// -----------------------------
+// Grid & Solution Data Structures
+// -----------------------------
+
 type pos struct {
 	r, c int
 }
@@ -23,29 +131,59 @@ type pos struct {
 // Grid holds the problem data.
 type Grid struct {
 	R, C      int
-	cells     [][]rune // grid of '.' or 'T'
+	cells     [][]rune
 	rowTarget []int
 	colTarget []int
 }
 
-// TentPlacement represents one tent placement.
-type TentPlacement struct {
-	r, c int
-	dir  rune // U, D, L, R, or X
-}
-
 // Solution holds a candidate solution.
 type Solution struct {
-	placements [][]bool // same dimensions as grid; true means a tent is placed
+	placements [][]bool
 	violations int
+	rowCounts  []int
+	colCounts  []int
+}
 
-	// Bookkeeping: current tent counts for rows and columns.
-	rowCounts []int
-	colCounts []int
+// Determines if placement is valid (prevents adjacent tents)
+func (s *Solution) canPlace(grid *Grid, r, c int) bool {
+	directions := []pos{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
+	for _, d := range directions {
+		nr, nc := r+d.r, c+d.c
+		if grid.inBounds(nr, nc) && s.placements[nr][nc] {
+			return false
+		}
+	}
+	return true
+}
+
+// Evaluates violations in a solution.
+func (g *Grid) evaluate(s *Solution) int {
+	violations := 0
+
+	// Row violations
+	for r := 0; r < g.R; r++ {
+		if s.rowCounts[r] != g.rowTarget[r] {
+			violations++
+		}
+	}
+
+	// Column violations
+	for c := 0; c < g.C; c++ {
+		if s.colCounts[c] != g.colTarget[c] {
+			violations++
+		}
+	}
+
+	return violations
+}
+
+// inBounds returns whether (r, c) is within grid bounds.
+func (g *Grid) inBounds(r, c int) bool {
+	return r >= 0 && r < g.R && c >= 0 && c < g.C
 }
 
 // -----------------------------
-// Parsing
+// Parsing Functions
 // -----------------------------
 
 // readInts reads a slice of ints from a line.
@@ -62,7 +200,7 @@ func readInts(line string) ([]int, error) {
 	return res, nil
 }
 
-// parseInput parses the problem input.
+// parseInput reads and parses the problem input from a file.
 func parseInput(r *bufio.Reader) (*Grid, error) {
 	// First line: R and C.
 	line, err := r.ReadString('\n')
@@ -91,9 +229,6 @@ func parseInput(r *bufio.Reader) (*Grid, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(rowTargets) != R {
-		return nil, fmt.Errorf("row target count mismatch")
-	}
 
 	// Column targets.
 	line, err = r.ReadString('\n')
@@ -103,9 +238,6 @@ func parseInput(r *bufio.Reader) (*Grid, error) {
 	colTargets, err := readInts(line)
 	if err != nil {
 		return nil, err
-	}
-	if len(colTargets) != C {
-		return nil, fmt.Errorf("column target count mismatch")
 	}
 
 	// Grid rows.
@@ -125,428 +257,50 @@ func parseInput(r *bufio.Reader) (*Grid, error) {
 	return &Grid{R: R, C: C, cells: cells, rowTarget: rowTargets, colTarget: colTargets}, nil
 }
 
-// inBounds returns whether (r,c) is within grid bounds.
-func (g *Grid) inBounds(r, c int) bool {
-	return r >= 0 && r < g.R && c >= 0 && c < g.C
-}
-
 // -----------------------------
-// Heuristic
-// -----------------------------
-
-// heuristic computes a cell’s heuristic value.
-// It rewards cells with adjacent trees and boosts the value if the corresponding row/col are under target.
-func (g *Grid) heuristic(r, c int, rowCount, colCount int) float64 {
-	score := 0.1
-	neighbors := [][2]int{{r - 1, c}, {r + 1, c}, {r, c - 1}, {r, c + 1}}
-	for _, n := range neighbors {
-		nr, nc := n[0], n[1]
-		if g.inBounds(nr, nc) && g.cells[nr][nc] == 'T' {
-			score += 1.0
-		}
-	}
-	// Boost if row/col are underfilled.
-	rowDeficit := float64(g.rowTarget[r] - rowCount)
-	colDeficit := float64(g.colTarget[c] - colCount)
-	if rowDeficit < 0 {
-		rowDeficit = 0
-	}
-	if colDeficit < 0 {
-		colDeficit = 0
-	}
-	score *= (1 + rowDeficit) * (1 + colDeficit)
-	return score
-}
-
-// assignDirection chooses a pairing direction for a tent at (r,c) based on an adjacent tree.
-func (g *Grid) assignDirection(r, c int) rune {
-	dirs := []struct {
-		dr, dc int
-		dir    rune
-	}{
-		{-1, 0, 'U'},
-		{1, 0, 'D'},
-		{0, -1, 'L'},
-		{0, 1, 'R'},
-	}
-	for _, d := range dirs {
-		nr, nc := r+d.dr, c+d.dc
-		if g.inBounds(nr, nc) && g.cells[nr][nc] == 'T' {
-			return d.dir
-		}
-	}
-	return 'X'
-}
-
-func abs(a int) int {
-	if a < 0 {
-		return -a
-	}
-	return a
-}
-
-// -----------------------------
-// Bipartite Matching (for final violation calculation)
-// -----------------------------
-
-// globalPairingViolations computes the pairing penalty using a global matching optimizer.
-func (g *Grid) globalPairingViolations(sol *Solution) int {
-	type pos struct{ r, c int }
-	var tents []pos
-	var trees []pos
-	for r := 0; r < g.R; r++ {
-		for c := 0; c < g.C; c++ {
-			if sol.placements[r][c] {
-				tents = append(tents, pos{r, c})
-			}
-			if g.cells[r][c] == 'T' {
-				trees = append(trees, pos{r, c})
-			}
-		}
-	}
-	adj := make([][]int, len(tents))
-	for i, t := range tents {
-		for j, tr := range trees {
-			if (abs(t.r-tr.r) == 1 && t.c == tr.c) || (abs(t.c-tr.c) == 1 && t.r == tr.r) {
-				adj[i] = append(adj[i], j)
-			}
-		}
-	}
-	matchTree := make([]int, len(trees))
-	for i := range matchTree {
-		matchTree[i] = -1
-	}
-	var dfs func(u int, visited []bool) bool
-	dfs = func(u int, visited []bool) bool {
-		for _, v := range adj[u] {
-			if !visited[v] {
-				visited[v] = true
-				if matchTree[v] == -1 || dfs(matchTree[v], visited) {
-					matchTree[v] = u
-					return true
-				}
-			}
-		}
-		return false
-	}
-	matchingSize := 0
-	for u := 0; u < len(tents); u++ {
-		visited := make([]bool, len(trees))
-		if dfs(u, visited) {
-			matchingSize++
-		}
-	}
-	penalty := (len(tents) - matchingSize) + (len(trees) - matchingSize)
-	return penalty
-}
-
-// computeBipartiteMatchingDetailed returns the exact matching between tents and trees.
-// It returns matchTent where matchTent[i] is the index in trees that is matched with tent i (or -1 if unmatched),
-// along with slices of positions for tents and trees.
-func (g *Grid) computeBipartiteMatchingDetailed(sol *Solution) (matchTent []int, tents []pos, trees []pos) {
-	// Gather tents.
-	for r := 0; r < g.R; r++ {
-		for c := 0; c < g.C; c++ {
-			if sol.placements[r][c] {
-				tents = append(tents, pos{r, c})
-			}
-		}
-	}
-	// Gather trees.
-	for r := 0; r < g.R; r++ {
-		for c := 0; c < g.C; c++ {
-			if g.cells[r][c] == 'T' {
-				trees = append(trees, pos{r, c})
-			}
-		}
-	}
-	adj := make([][]int, len(tents))
-	for i, t := range tents {
-		for j, tr := range trees {
-			if (abs(t.r-tr.r) == 1 && t.c == tr.c) || (abs(t.c-tr.c) == 1 && t.r == tr.r) {
-				adj[i] = append(adj[i], j)
-			}
-		}
-	}
-	matchTree := make([]int, len(trees))
-	for i := range matchTree {
-		matchTree[i] = -1
-	}
-	var dfs func(u int, visited []bool) bool
-	dfs = func(u int, visited []bool) bool {
-		for _, v := range adj[u] {
-			if !visited[v] {
-				visited[v] = true
-				if matchTree[v] == -1 || dfs(matchTree[v], visited) {
-					matchTree[v] = u
-					return true
-				}
-			}
-		}
-		return false
-	}
-	for u := 0; u < len(tents); u++ {
-		visited := make([]bool, len(trees))
-		_ = dfs(u, visited)
-	}
-	matchTent = make([]int, len(tents))
-	for i := range matchTent {
-		matchTent[i] = -1
-	}
-	for j, i := range matchTree {
-		if i != -1 {
-			matchTent[i] = j
-		}
-	}
-	return matchTent, tents, trees
-}
-
-// computeDirection returns a direction character ('U', 'D', 'L', 'R', or 'X')
-// for a tent at (tentR,tentC) paired with a tree at (treeR,treeC).
-func computeDirection(tentR, tentC, treeR, treeC int) rune {
-	if tentR == treeR {
-		if treeC == tentC-1 {
-			return 'L'
-		}
-		if treeC == tentC+1 {
-			return 'R'
-		}
-	}
-	if tentC == treeC {
-		if treeR == tentR-1 {
-			return 'U'
-		}
-		if treeR == tentR+1 {
-			return 'D'
-		}
-	}
-	return 'X'
-}
-
-// -----------------------------
-// Evaluate
-// -----------------------------
-
-// evaluate computes the overall violation score of a solution.
-func (g *Grid) evaluate(sol *Solution) int {
-	violations := 0
-	dirs8 := [][2]int{
-		{-1, -1}, {-1, 0}, {-1, 1},
-		{0, -1}, {0, 1},
-		{1, -1}, {1, 0}, {1, 1},
-	}
-	for r := 0; r < g.R; r++ {
-		for c := 0; c < g.C; c++ {
-			if sol.placements[r][c] {
-				for _, d := range dirs8 {
-					nr, nc := r+d[0], c+d[1]
-					if g.inBounds(nr, nc) && sol.placements[nr][nc] {
-						violations++
-						break
-					}
-				}
-			}
-		}
-	}
-	violations += g.globalPairingViolations(sol)
-	for r := 0; r < g.R; r++ {
-		violations += int(math.Abs(float64(sol.rowCounts[r] - g.rowTarget[r])))
-	}
-	for c := 0; c < g.C; c++ {
-		violations += int(math.Abs(float64(sol.colCounts[c] - g.colTarget[c])))
-	}
-	return violations
-}
-
-// -----------------------------
-// Placement Construction
-// -----------------------------
-
-// canPlace returns true if placing a tent at (r, c) does not violate the non-adjacency rule.
-func (sol *Solution) canPlace(g *Grid, r, c int) bool {
-	dirs8 := [][2]int{
-		{-1, -1}, {-1, 0}, {-1, 1},
-		{0, -1}, {0, 1},
-		{1, -1}, {1, 0}, {1, 1},
-	}
-	for _, d := range dirs8 {
-		nr, nc := r+d[0], c+d[1]
-		if g.inBounds(nr, nc) && sol.placements[nr][nc] {
-			return false
-		}
-	}
-	return true
-}
-
-// constructHeuristicSolution builds a candidate solution using the multiplicative heuristic.
-func (g *Grid) constructHeuristicSolution() *Solution {
-	sol := &Solution{
-		placements: make([][]bool, g.R),
-		rowCounts:  make([]int, g.R),
-		colCounts:  make([]int, g.C),
-	}
-	for i := 0; i < g.R; i++ {
-		sol.placements[i] = make([]bool, g.C)
-	}
-
-	// Greedy selection: choose the eligible cell with the highest heuristic score.
-	for {
-		var bestR, bestC int
-		bestScore := -1.0
-		found := false
-		for r := 0; r < g.R; r++ {
-			for c := 0; c < g.C; c++ {
-				if g.cells[r][c] == '.' && !sol.placements[r][c] && sol.canPlace(g, r, c) {
-					// Only consider cells in rows/cols that still need tents.
-					if sol.rowCounts[r] < g.rowTarget[r] || sol.colCounts[c] < g.colTarget[c] {
-						score := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c])
-						if score > bestScore {
-							bestScore = score
-							bestR = r
-							bestC = c
-							found = true
-						}
-					}
-				}
-			}
-		}
-		if !found {
-			break
-		}
-		sol.placements[bestR][bestC] = true
-		sol.rowCounts[bestR]++
-		sol.colCounts[bestC]++
-	}
-
-	// Repair phase for rows.
-	for r := 0; r < g.R; r++ {
-		for sol.rowCounts[r] < g.rowTarget[r] {
-			bestC := -1
-			bestScore := -1.0
-			for c := 0; c < g.C; c++ {
-				if g.cells[r][c] == '.' && !sol.placements[r][c] && sol.canPlace(g, r, c) {
-					score := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c])
-					if score > bestScore {
-						bestScore = score
-						bestC = c
-					}
-				}
-			}
-			if bestC == -1 {
-				break
-			}
-			sol.placements[r][bestC] = true
-			sol.rowCounts[r]++
-			sol.colCounts[bestC]++
-		}
-	}
-	// Repair phase for columns.
-	for c := 0; c < g.C; c++ {
-		for sol.colCounts[c] < g.colTarget[c] {
-			bestR := -1
-			bestScore := -1.0
-			for r := 0; r < g.R; r++ {
-				if g.cells[r][c] == '.' && !sol.placements[r][c] && sol.canPlace(g, r, c) {
-					score := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c])
-					if score > bestScore {
-						bestScore = score
-						bestR = r
-					}
-				}
-			}
-			if bestR == -1 {
-				break
-			}
-			sol.placements[bestR][c] = true
-			sol.rowCounts[bestR]++
-			sol.colCounts[c]++
-		}
-	}
-
-	sol.violations = g.evaluate(sol)
-	return sol
-}
-
-// -----------------------------
-// Main
+// Main Function
 // -----------------------------
 
 func main() {
-	// Read input.
-	var inputReader *bufio.Reader
-	var inputFileName string
-	if len(os.Args) > 1 {
-		inputFileName = os.Args[1]
-		file, err := os.Open(inputFileName)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error opening input file: %v\n", err)
-			return
-		}
-		defer file.Close()
-		inputReader = bufio.NewReader(file)
-	} else {
-		inputReader = bufio.NewReader(os.Stdin)
-		inputFileName = "default.txt"
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: go run main.go <input_filename>")
+		return
 	}
 
-	grid, err := parseInput(inputReader)
+	filename := os.Args[1]
+	file, err := os.Open(filename)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing input: %v\n", err)
+		fmt.Println("Error:", err)
+		return
+	}
+	defer file.Close()
+
+	grid, err := parseInput(bufio.NewReader(file))
+	if err != nil {
+		fmt.Println("Error parsing input:", err)
 		return
 	}
 
 	start := time.Now()
-	sol := grid.constructHeuristicSolution()
+	dsu := clusterTrees(grid)
+	sol := placeTents(grid, dsu)
 	elapsed := time.Since(start)
-	fmt.Printf("Heuristic solution constructed in %v\n", elapsed)
+
+	fmt.Printf("DSU solution constructed in %v\n", elapsed)
 	fmt.Printf("Total violations: %d\n", sol.violations)
 
-	// Instead of using the naive assignDirection,
-	// perform a detailed bipartite matching so that each tent is matched with a unique tree.
-	matchTent, tents, trees := grid.computeBipartiteMatchingDetailed(sol)
+	// Save the solution to an output file
+	outputFile := filepath.Join("outputs", "output_"+filepath.Base(filename))
+	os.MkdirAll("outputs", os.ModePerm)
+	outFile, _ := os.Create(outputFile)
+	defer outFile.Close()
 
-	// Prepare output.
-	outputBuilder := &strings.Builder{}
-	// Count how many tents.
-	tentCount := 0
-	for r := 0; r < grid.R; r++ {
-		for c := 0; c < grid.C; c++ {
+	for r := range sol.placements {
+		for c := range sol.placements[r] {
 			if sol.placements[r][c] {
-				tentCount++
+				fmt.Fprintf(outFile, "%d %d X\n", r+1, c+1)
 			}
 		}
 	}
-	fmt.Fprintf(outputBuilder, "%d\n", sol.violations)
-	fmt.Fprintf(outputBuilder, "%d\n", tentCount)
-
-	// Output the tents with final directions from the matching.
-	// The tents slice is in the same order as used in the matching.
-	for i, tpos := range tents {
-		tentR, tentC := tpos.r, tpos.c
-		treeIdx := matchTent[i]
-		dir := 'X'
-		if treeIdx != -1 {
-			tr, tc := trees[treeIdx].r, trees[treeIdx].c
-			dir = computeDirection(tentR, tentC, tr, tc)
-		}
-		// Output 1-indexed coordinates.
-		fmt.Fprintf(outputBuilder, "%d %d %c\n", tentR+1, tentC+1, dir)
-	}
-
-	baseName := filepath.Base(inputFileName)
-	outputFileName := filepath.Join("outputs", "output_"+baseName)
-	os.MkdirAll("outputs", os.ModePerm)
-	outFile, err := os.Create(outputFileName)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating output file: %v\n", err)
-		return
-	}
-	defer outFile.Close()
-
-	_, err = outFile.WriteString(outputBuilder.String())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing output: %v\n", err)
-		return
-	}
-	fmt.Printf("Solution written to %s\n", outputFileName)
+	fmt.Printf("Solution written to %s\n", outputFile)
 }

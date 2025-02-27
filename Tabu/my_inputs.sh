@@ -1,6 +1,6 @@
 #!/bin/bash
 
-heuristic_folder="../small_outputs"
+heuristic_folder="../all_outputs/best_performance"
 input_folder="../small_inputs"
 
 for input_file in "$input_folder"/*; do
