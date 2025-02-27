@@ -814,7 +814,6 @@ func main() {
 		return
 	}
 
-<<<<<<< HEAD
 	// Tabu search parameters
 	maxIter := 2500
 	tabuTenure := 50
