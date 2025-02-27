@@ -23,17 +23,14 @@ type pos struct{ r, c int }
 
 type Grid struct {
 	R, C      int
-	cells     [][]rune
+	cells     [][]rune // '.' or 'T'
 	rowTarget []int
 	colTarget []int
+}
 
-	// Precomputed positions of '.' and 'T'
-	potentialTents []pos
-	treePositions  []pos
-
-	// adjacencyList[tentIndex] = slice of all treeIndices
-	// that are orthogonally adjacent to that tent cell.
-	adjacencyList [][]int
+type TentPlacement struct {
+	r, c int
+	dir  rune
 }
 
 type Solution struct {
@@ -55,13 +52,14 @@ type CandidateResult struct {
 	val  int
 }
 
-// Global best solution references
+// For graceful interruption, storing the global best
 var globalBestSol *Solution
 var globalBestMutex sync.Mutex
 
 // ---------------------------------------------------------------
-// Parsing
+// Parsing and helpers
 // ---------------------------------------------------------------
+
 func readInts(line string) ([]int, error) {
 	parts := strings.Fields(line)
 	nums := make([]int, len(parts))
@@ -130,39 +128,13 @@ func parseInput(r *bufio.Reader) (*Grid, error) {
 		cells[i] = []rune(line)
 	}
 
-	g := &Grid{
+	return &Grid{
 		R:         R,
 		C:         C,
 		cells:     cells,
 		rowTarget: rowT,
 		colTarget: colT,
-	}
-
-	// Collect potential tents and tree positions
-	for rr := 0; rr < R; rr++ {
-		for cc := 0; cc < C; cc++ {
-			switch g.cells[rr][cc] {
-			case 'T':
-				g.treePositions = append(g.treePositions, pos{rr, cc})
-			case '.':
-				g.potentialTents = append(g.potentialTents, pos{rr, cc})
-			}
-		}
-	}
-
-	// Build adjacency once for bipartite matching
-	g.adjacencyList = make([][]int, len(g.potentialTents))
-	for i, tentPos := range g.potentialTents {
-		for j, treePos := range g.treePositions {
-			// If orth-adj, record adjacency
-			if (abs(tentPos.r-treePos.r) == 1 && tentPos.c == treePos.c) ||
-				(abs(tentPos.c-treePos.c) == 1 && tentPos.r == treePos.r) {
-				g.adjacencyList[i] = append(g.adjacencyList[i], j)
-			}
-		}
-	}
-
-	return g, nil
+	}, nil
 }
 
 func abs(x int) int {
@@ -176,64 +148,88 @@ func (g *Grid) inBounds(r, c int) bool {
 	return (r >= 0 && r < g.R && c >= 0 && c < g.C)
 }
 
-// ---------------------------------------------------------------
-// Evaluation
-// ---------------------------------------------------------------
-
-// We break out the adjacency checking for tents alone.
-func (g *Grid) countTentAdjViolations(sol *Solution) int {
+// adjacency check for solution
+func (sol *Solution) canPlace(g *Grid, r, c int) bool {
 	dirs8 := [][2]int{
 		{-1, -1}, {-1, 0}, {-1, 1},
 		{0, -1}, {0, 1},
 		{1, -1}, {1, 0}, {1, 1},
 	}
-	viol := 0
-
-	// Check only active tent positions
-	for _, pt := range g.potentialTents {
-		r, c := pt.r, pt.c
-		if !sol.placements[r][c] {
-			continue
+	for _, d := range dirs8 {
+		nr, nc := r+d[0], c+d[1]
+		if g.inBounds(nr, nc) && sol.placements[nr][nc] {
+			return false
 		}
-		// Check if any of the 8 neighbors is also a tent
-		for _, d := range dirs8 {
-			nr, nc := r+d[0], c+d[1]
-			if g.inBounds(nr, nc) && sol.placements[nr][nc] {
-				viol++
-				break
+	}
+	return true
+}
+
+// direction for final output
+func (g *Grid) assignDirection(r, c int) rune {
+	// naive approach: just pick the first cardinal direction that is T
+	dirs := []struct {
+		dr, dc int
+		label  rune
+	}{
+		{-1, 0, 'U'},
+		{1, 0, 'D'},
+		{0, -1, 'L'},
+		{0, 1, 'R'},
+	}
+	for _, d := range dirs {
+		nr, nc := r+d.dr, c+d.dc
+		if g.inBounds(nr, nc) && g.cells[nr][nc] == 'T' {
+			return d.label
+		}
+	}
+	return 'X'
+}
+
+// ---------------------------------------------------------------
+// BFS-based bipartite matching used for violation
+// ---------------------------------------------------------------
+
+func (g *Grid) globalPairingViolations(sol *Solution) int {
+	// gather tents and trees
+
+	var tents []pos
+	var trees []pos
+
+	for r := 0; r < g.R; r++ {
+		for c := 0; c < g.C; c++ {
+			if sol.placements[r][c] {
+				tents = append(tents, pos{r, c})
+			}
+			if g.cells[r][c] == 'T' {
+				trees = append(trees, pos{r, c})
 			}
 		}
 	}
-	return viol
-}
 
-// globalPairingViolations uses the precomputed adjacencyList
-func (g *Grid) globalPairingViolations(sol *Solution) int {
-	// Gather which tent indices in g.potentialTents are active
-	activeTentIndices := make([]int, 0, len(g.potentialTents))
-	for i, pt := range g.potentialTents {
-		if sol.placements[pt.r][pt.c] {
-			activeTentIndices = append(activeTentIndices, i)
+	// adjacency list
+	adj := make([][]int, len(tents))
+	for i, t := range tents {
+		for j, tr := range trees {
+			// if up/down/left/right
+			if (abs(t.r-tr.r) == 1 && t.c == tr.c) ||
+				(abs(t.c-tr.c) == 1 && t.r == tr.r) {
+				adj[i] = append(adj[i], j)
+			}
 		}
 	}
-	tentCount := len(activeTentIndices)
-	treeCount := len(g.treePositions)
 
-	// Prepare match array: matchTree[j] = index (in activeTentIndices) of the tent matched to tree j, or -1
-	matchTree := make([]int, treeCount)
+	matchTree := make([]int, len(trees))
 	for i := range matchTree {
 		matchTree[i] = -1
 	}
 
-	// Standard DFS-based bipartite matching
 	var dfs func(u int, visited []bool) bool
 	dfs = func(u int, visited []bool) bool {
-		tentIdx := activeTentIndices[u] // index in adjacencyList
-		for _, treeIdx := range g.adjacencyList[tentIdx] {
-			if !visited[treeIdx] {
-				visited[treeIdx] = true
-				if matchTree[treeIdx] == -1 || dfs(matchTree[treeIdx], visited) {
-					matchTree[treeIdx] = u
+		for _, v := range adj[u] {
+			if !visited[v] {
+				visited[v] = true
+				if matchTree[v] == -1 || dfs(matchTree[v], visited) {
+					matchTree[v] = u
 					return true
 				}
 			}
@@ -242,22 +238,112 @@ func (g *Grid) globalPairingViolations(sol *Solution) int {
 	}
 
 	matchingSize := 0
-	for u := 0; u < tentCount; u++ {
-		visited := make([]bool, treeCount)
+	for u := 0; u < len(tents); u++ {
+		visited := make([]bool, len(trees))
 		if dfs(u, visited) {
 			matchingSize++
 		}
 	}
 
-	// penalty = (#activeTents - matchingSize) + (#trees - matchingSize)
-	return (tentCount - matchingSize) + (treeCount - matchingSize)
+	// unmatched tents + unmatched trees
+	penalty := (len(tents) - matchingSize) + (len(trees) - matchingSize)
+	return penalty
 }
 
+// same bipartite approach, but we return the array that says which tent matched which tree
+func (g *Grid) computeBipartiteMatchingDetailed(sol *Solution) (matchTent []int, tents []pos, trees []pos) {
+	// gather
+	for r := 0; r < g.R; r++ {
+		for c := 0; c < g.C; c++ {
+			if sol.placements[r][c] {
+				tents = append(tents, pos{r, c})
+			}
+		}
+	}
+	for r := 0; r < g.R; r++ {
+		for c := 0; c < g.C; c++ {
+			if g.cells[r][c] == 'T' {
+				trees = append(trees, pos{r, c})
+			}
+		}
+	}
+
+	// adjacency
+	adj := make([][]int, len(tents))
+	for i, t := range tents {
+		for j, tr := range trees {
+			if (abs(t.r-tr.r) == 1 && t.c == tr.c) ||
+				(abs(t.c-tr.c) == 1 && t.r == tr.r) {
+				adj[i] = append(adj[i], j)
+			}
+		}
+	}
+
+	matchTree := make([]int, len(trees))
+	for i := range matchTree {
+		matchTree[i] = -1
+	}
+
+	var dfs func(u int, visited []bool) bool
+	dfs = func(u int, visited []bool) bool {
+		for _, v := range adj[u] {
+			if !visited[v] {
+				visited[v] = true
+				if matchTree[v] == -1 || dfs(matchTree[v], visited) {
+					matchTree[v] = u
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	// find maximum matching
+	for u := 0; u < len(tents); u++ {
+		visited := make([]bool, len(trees))
+		_ = dfs(u, visited)
+	}
+
+	// Now we want matchTent[i] = indexOfTree matched with tent i, or -1
+	matchTent = make([]int, len(tents))
+	for i := 0; i < len(tents); i++ {
+		matchTent[i] = -1
+	}
+	for j, i := range matchTree {
+		if i != -1 {
+			matchTent[i] = j
+		}
+	}
+	return matchTent, tents, trees
+}
+
+// evaluate function
 func (g *Grid) evaluate(sol *Solution) int {
-	adjacencyViol := g.countTentAdjViolations(sol)
+	// adjacency
+	dirs8 := [][2]int{
+		{-1, -1}, {-1, 0}, {-1, 1},
+		{0, -1}, {0, 1},
+		{1, -1}, {1, 0}, {1, 1},
+	}
+	adjacencyViol := 0
+	for r := 0; r < g.R; r++ {
+		for c := 0; c < g.C; c++ {
+			if sol.placements[r][c] {
+				for _, d := range dirs8 {
+					nr, nc := r+d[0], c+d[1]
+					if g.inBounds(nr, nc) && sol.placements[nr][nc] {
+						adjacencyViol++
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// bipartite matching
 	pairingViol := g.globalPairingViolations(sol)
 
-	// row/col mismatches
+	// row/col mismatch
 	mismatchViol := 0
 	for r := 0; r < g.R; r++ {
 		mismatchViol += abs(sol.rowCounts[r] - g.rowTarget[r])
@@ -265,12 +351,14 @@ func (g *Grid) evaluate(sol *Solution) int {
 	for c := 0; c < g.C; c++ {
 		mismatchViol += abs(sol.colCounts[c] - g.colTarget[c])
 	}
+
 	return adjacencyViol + pairingViol + mismatchViol
 }
 
 // ---------------------------------------------------------------
-// Cloning & Moves
+// Tabu logic
 // ---------------------------------------------------------------
+
 func cloneSolution(sol *Solution) *Solution {
 	ns := &Solution{
 		placements: make([][]bool, len(sol.placements)),
@@ -287,6 +375,7 @@ func cloneSolution(sol *Solution) *Solution {
 	return ns
 }
 
+// apply a single move
 func applyMove(sol *Solution, g *Grid, move Move) *Solution {
 	ns := cloneSolution(sol)
 	if move.add {
@@ -306,10 +395,7 @@ func applyMove(sol *Solution, g *Grid, move Move) *Solution {
 	return ns
 }
 
-// ---------------------------------------------------------------
-// Tabu Search
-// ---------------------------------------------------------------
-func constructTabuSolution(g *Grid, initSol *Solution, maxIter, tabuTenure, neighborSize int, rnd *rand.Rand) *Solution {
+func constructTabuSolution(g *Grid, initSol *Solution, maxIter int, tabuTenure int, neighborSize int, rnd *rand.Rand) *Solution {
 	current := cloneSolution(initSol)
 	best := cloneSolution(current)
 	bestVal := current.violations
@@ -321,39 +407,20 @@ func constructTabuSolution(g *Grid, initSol *Solution, maxIter, tabuTenure, neig
 	fmt.Printf("Initial solution violations: %d\n", bestVal)
 
 	tabuList := make(map[Move]int)
-
-	// Preallocate candidate moves slice
-	candidateMoves := make([]Move, 0, neighborSize)
-
-	// Create persistent channels for moves and results
-	candChan := make(chan Move, neighborSize)
-	resChan := make(chan CandidateResult, neighborSize)
+	var mu sync.Mutex
 
 	numWorkers := 8
-	var wg sync.WaitGroup
-
-	// Start persistent worker pool
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for m := range candChan {
-				ns := applyMove(current, g, m)
-				resChan <- CandidateResult{m, ns.violations}
-			}
-		}()
-	}
 
 	for iter := 0; iter < maxIter; iter++ {
-		// Remove expired entries in tabu list
+		// remove expired
 		for m, exp := range tabuList {
 			if exp <= iter {
 				delete(tabuList, m)
 			}
 		}
 
-		// Generate random candidate moves
-		candidateMoves = candidateMoves[:0]
+		// build candidate moves
+		var candidateMoves []Move
 		for i := 0; i < neighborSize; i++ {
 			rr := rnd.Intn(g.R)
 			cc := rnd.Intn(g.C)
@@ -366,30 +433,51 @@ func constructTabuSolution(g *Grid, initSol *Solution, maxIter, tabuTenure, neig
 				candidateMoves = append(candidateMoves, Move{rr, cc, true})
 			}
 		}
-
 		fmt.Printf("Iteration %d: Generated %d candidate moves.\n", iter, len(candidateMoves))
 
-		// Send them to worker pool
+		candChan := make(chan Move, len(candidateMoves))
+		resChan := make(chan CandidateResult, len(candidateMoves))
+
+		// workers
+		worker := func() {
+			for m := range candChan {
+				ns := applyMove(current, g, m)
+				resChan <- CandidateResult{m, ns.violations}
+			}
+		}
+
+		var wg sync.WaitGroup
+		for i := 0; i < numWorkers; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				worker()
+			}()
+		}
+
 		for _, cm := range candidateMoves {
 			candChan <- cm
 		}
+		close(candChan)
+		wg.Wait()
+		close(resChan)
 
-		// Collect results
 		bestMoveFound := false
 		bestMoveVal := math.MaxInt32
 		var bestMove Move
 
-		for i := 0; i < len(candidateMoves); i++ {
-			cr := <-resChan
-			if _, isTabu := tabuList[cr.move]; isTabu && cr.val >= bestVal {
-				// Skip tabooed moves that don't improve
+		for r := range resChan {
+			mu.Lock()
+			if _, isTabu := tabuList[r.move]; isTabu && r.val >= bestVal {
+				mu.Unlock()
 				continue
 			}
-			if cr.val < bestMoveVal {
-				bestMoveVal = cr.val
-				bestMove = cr.move
+			if r.val < bestMoveVal {
+				bestMoveVal = r.val
+				bestMove = r.move
 				bestMoveFound = true
 			}
+			mu.Unlock()
 		}
 
 		if !bestMoveFound {
@@ -420,26 +508,14 @@ func constructTabuSolution(g *Grid, initSol *Solution, maxIter, tabuTenure, neig
 		}
 	}
 
-	// Terminate workers
-	close(candChan)
-	wg.Wait()
-	close(resChan)
-
 	fmt.Println("Tabu search complete.")
 	return best
 }
 
 // ---------------------------------------------------------------
-// Loading an Initial Solution
+// Heuristic initial solution (KEPT, but never called if -init is not provided)
 // ---------------------------------------------------------------
-func loadSolution(filename string, g *Grid) (*Solution, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	sc := bufio.NewScanner(f)
-
+func (g *Grid) constructHeuristicSolution() *Solution {
 	sol := &Solution{
 		placements: make([][]bool, g.R),
 		rowCounts:  make([]int, g.R),
@@ -449,7 +525,125 @@ func loadSolution(filename string, g *Grid) (*Solution, error) {
 		sol.placements[i] = make([]bool, g.C)
 	}
 
-	// Skip the first 2 lines
+	// 1) greedy
+	for {
+		bestScore := -1.0
+		bestR := -1
+		bestC := -1
+		found := false
+		for r := 0; r < g.R; r++ {
+			for c := 0; c < g.C; c++ {
+				if g.cells[r][c] == '.' && !sol.placements[r][c] && sol.canPlace(g, r, c) {
+					if sol.rowCounts[r] < g.rowTarget[r] || sol.colCounts[c] < g.colTarget[c] {
+						sc := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c],
+							g.rowTarget[r], g.colTarget[c])
+						if sc > bestScore {
+							bestScore = sc
+							bestR = r
+							bestC = c
+							found = true
+						}
+					}
+				}
+			}
+		}
+		if !found {
+			break
+		}
+		sol.placements[bestR][bestC] = true
+		sol.rowCounts[bestR]++
+		sol.colCounts[bestC]++
+	}
+
+	// 2) row fix
+	for r := 0; r < g.R; r++ {
+		for sol.rowCounts[r] < g.rowTarget[r] {
+			bestScore := -1.0
+			bestC := -1
+			for c := 0; c < g.C; c++ {
+				if g.cells[r][c] == '.' && !sol.placements[r][c] && sol.canPlace(g, r, c) {
+					sc := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c],
+						g.rowTarget[r], g.colTarget[c])
+					if sc > bestScore {
+						bestScore = sc
+						bestC = c
+					}
+				}
+			}
+			if bestC == -1 {
+				break
+			}
+			sol.placements[r][bestC] = true
+			sol.rowCounts[r]++
+			sol.colCounts[bestC]++
+		}
+	}
+	// 3) col fix
+	for c := 0; c < g.C; c++ {
+		for sol.colCounts[c] < g.colTarget[c] {
+			bestScore := -1.0
+			bestR := -1
+			for r := 0; r < g.R; r++ {
+				if g.cells[r][c] == '.' && !sol.placements[r][c] && sol.canPlace(g, r, c) {
+					sc := g.heuristic(r, c, sol.rowCounts[r], sol.colCounts[c],
+						g.rowTarget[r], g.colTarget[c])
+					if sc > bestScore {
+						bestScore = sc
+						bestR = r
+					}
+				}
+			}
+			if bestR == -1 {
+				break
+			}
+			sol.placements[bestR][c] = true
+			sol.rowCounts[bestR]++
+			sol.colCounts[c]++
+		}
+	}
+
+	sol.violations = g.evaluate(sol)
+	return sol
+}
+
+func (g *Grid) heuristic(r, c int, rowCount, colCount, rowT, colT int) float64 {
+	base := 0.1
+	dirs := [][2]int{{r - 1, c}, {r + 1, c}, {r, c - 1}, {r, c + 1}}
+	for _, d := range dirs {
+		nr, nc := d[0], d[1]
+		if g.inBounds(nr, nc) && g.cells[nr][nc] == 'T' {
+			base += 1.0
+		}
+	}
+	rowDef := float64(rowT - rowCount)
+	colDef := float64(colT - colCount)
+	if rowDef < 0 {
+		rowDef = 0
+	}
+	if colDef < 0 {
+		colDef = 0
+	}
+	base *= (1 + rowDef) * (1 + colDef)
+	return base
+}
+
+// loading from a file for -init
+func loadSolution(filename string, g *Grid) (*Solution, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	sol := &Solution{
+		placements: make([][]bool, g.R),
+		rowCounts:  make([]int, g.R),
+		colCounts:  make([]int, g.C),
+	}
+	for i := 0; i < g.R; i++ {
+		sol.placements[i] = make([]bool, g.C)
+	}
+	// skip first 2 lines
 	if !sc.Scan() {
 		return nil, fmt.Errorf("missing line1")
 	}
@@ -480,8 +674,10 @@ func loadSolution(filename string, g *Grid) (*Solution, error) {
 }
 
 // ---------------------------------------------------------------
-// Saving the Final Solution
+// Save final solution, but with bipartite matching directions
 // ---------------------------------------------------------------
+
+// compute direction from tent to tree, if they're exactly up/down/left/right. Else 'X'.
 func computeDirection(tentR, tentC, treeR, treeC int) rune {
 	if tentR == treeR {
 		if treeC == tentC-1 {
@@ -502,70 +698,14 @@ func computeDirection(tentR, tentC, treeR, treeC int) rune {
 	return 'X'
 }
 
-// We'll reuse the bipartite logic to figure out which tree each tent is matched to.
-// This is effectively "computeBipartiteMatchingDetailed" from earlier, but updated
-// to use our precomputed adjacency and the "active" tent indices approach.
-func (g *Grid) computeBipartiteMatchingDetailed(sol *Solution) (matchTent []int, tents []pos, trees []pos) {
-	// Build up the list of actual tent positions
-	var activeTentIndices []int
-	for i, pt := range g.potentialTents {
-		if sol.placements[pt.r][pt.c] {
-			activeTentIndices = append(activeTentIndices, i)
-			tents = append(tents, pt)
-		}
-	}
-	// All tree positions
-	trees = g.treePositions
-
-	treeCount := len(trees)
-	matchTree := make([]int, treeCount)
-	for i := range matchTree {
-		matchTree[i] = -1
-	}
-
-	// DFS as usual
-	var dfs func(u int, visited []bool) bool
-	dfs = func(u int, visited []bool) bool {
-		tentIdx := activeTentIndices[u]
-		for _, treeIdx := range g.adjacencyList[tentIdx] {
-			if !visited[treeIdx] {
-				visited[treeIdx] = true
-				if matchTree[treeIdx] == -1 || dfs(matchTree[treeIdx], visited) {
-					matchTree[treeIdx] = u
-					return true
-				}
-			}
-		}
-		return false
-	}
-
-	for u := 0; u < len(activeTentIndices); u++ {
-		visited := make([]bool, treeCount)
-		_ = dfs(u, visited)
-	}
-
-	// matchTent[i] = index of tree matched to the i-th tent (in the "tents" array),
-	// or -1 if none
-	matchTent = make([]int, len(activeTentIndices))
-	for i := range matchTent {
-		matchTent[i] = -1
-	}
-	// If matchTree[treeIdx] = u, then the tent with local index u is matched to tree treeIdx
-	// That tent's global index is activeTentIndices[u].
-	// We want to record matchTent[u] = treeIdx
-	for treeIdx, u := range matchTree {
-		if u != -1 {
-			matchTent[u] = treeIdx
-		}
-	}
-	return matchTent, tents, trees
-}
-
 func saveBestSolution(bestSol *Solution, g *Grid, inputFileName string) {
+	// We'll do the bipartite matching again, then print directions from that matching
 	matchTent, tents, trees := g.computeBipartiteMatchingDetailed(bestSol)
 
+	// build final lines from matched pairs
 	out := &strings.Builder{}
 
+	// count how many tents
 	tentCount := 0
 	for _, row := range bestSol.placements {
 		for _, b := range row {
@@ -577,23 +717,28 @@ func saveBestSolution(bestSol *Solution, g *Grid, inputFileName string) {
 	fmt.Fprintf(out, "%d\n", bestSol.violations)
 	fmt.Fprintf(out, "%d\n", tentCount)
 
-	for i, p := range tents {
+	// we want to output them in row-major order
+	idx := 0 // index in the 'tents' array
+	for i := range tents {
+		tentR, tentC := tents[i].r, tents[i].c
 		treeIdx := matchTent[i]
 		var dir rune
 		if treeIdx == -1 {
 			dir = 'X'
 		} else {
 			treeR, treeC := trees[treeIdx].r, trees[treeIdx].c
-			dir = computeDirection(p.r, p.c, treeR, treeC)
+			dir = computeDirection(tentR, tentC, treeR, treeC)
 		}
-		fmt.Fprintf(out, "%d %d %c\n", p.r+1, p.c+1, dir)
+		// output is 1-based
+		fmt.Fprintf(out, "%d %d %c\n", tentR+1, tentC+1, dir)
+		idx++
 	}
 
 	baseName := filepath.Base(inputFileName)
-	outputFileName := filepath.Join("tabu", "output_"+baseName)
+	outFileName := filepath.Join("tabu", "output_"+baseName)
 	os.MkdirAll("tabu", os.ModePerm)
 
-	f, err := os.Create(outputFileName)
+	f, err := os.Create(outFileName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error create output: %v\n", err)
 		return
@@ -605,12 +750,13 @@ func saveBestSolution(bestSol *Solution, g *Grid, inputFileName string) {
 		fmt.Fprintf(os.Stderr, "Error writing: %v\n", err)
 		return
 	}
-	fmt.Printf("Solution written to %s\n", outputFileName)
+	fmt.Printf("Solution written to %s\n", outFileName)
 }
 
 // ---------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------
+
 func main() {
 	initSolutionPath := flag.String("init", "", "Path to an initial solution file.")
 	flag.Parse()
@@ -637,7 +783,7 @@ func main() {
 		return
 	}
 
-	// Graceful interruption
+	// graceful interrupt
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -652,27 +798,38 @@ func main() {
 		os.Exit(1)
 	}()
 
-	// Require an initial solution
-	if *initSolutionPath == "" {
+	// Must provide warm start: if -init not provided, exit.
+	var initSol *Solution
+	if *initSolutionPath != "" {
+		fmt.Printf("Loading init from %s\n", *initSolutionPath)
+		so, err := loadSolution(*initSolutionPath, g)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading init solution: %v\n", err)
+			return
+		}
+		initSol = so
+		fmt.Printf("Initial loaded => %d violations\n", initSol.violations)
+	} else {
 		fmt.Fprintln(os.Stderr, "No init provided. You must provide -init. Exiting.")
 		return
 	}
-	fmt.Printf("Loading init from %s\n", *initSolutionPath)
-	initSol, err := loadSolution(*initSolutionPath, g)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading init solution: %v\n", err)
-		return
-	}
-	fmt.Printf("Initial loaded => %d violations\n", initSol.violations)
 
+<<<<<<< HEAD
 	// Tabu search parameters
 	maxIter := 2500
 	tabuTenure := 50
 	neighborhoodSize := 50
+=======
+	// Tabu parameters
+	maxIter := 100000
+	tabuTenure := 500
+	neighborhoodSize := 100
+>>>>>>> e617a2527cced8522c75bc2d4691ee1c106de57a
 
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	bestSol := constructTabuSolution(g, initSol, maxIter, tabuTenure, neighborhoodSize, rnd)
 
+	// final output
 	fmt.Printf("Best solution => %d violations\n", bestSol.violations)
 	if bestSol.violations < initSol.violations {
 		difference := initSol.violations - bestSol.violations

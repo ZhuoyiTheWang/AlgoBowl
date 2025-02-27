@@ -302,6 +302,27 @@ func treeMatchingHeuristic(r, c int, sol *Solution, g *Grid) float64 {
 	return score
 }
 
+func adjacencyTreeHeuristic(r, c int, sol *Solution, g *Grid) float64 {
+	dirs8 := [][2]int{{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}}
+	dirs4 := [][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
+
+	for _, d := range dirs8 {
+		nr, nc := r+d[0], c+d[1]
+		if g.inBounds(nr, nc) && sol.placements[nr][nc] {
+			return -1.0 // Immediate penalty if next to another tent
+		}
+	}
+	score := 0.0
+	for _, d := range dirs4 { // Only check cardinal directions for trees
+		nr, nc := r+d[0], c+d[1]
+		if g.inBounds(nr, nc) && g.cells[nr][nc] == 'T' {
+			score += 1.0
+		}
+	}
+
+	return score // Higher score means better placement
+}
+
 // rowColumnHeuristic focuses on meeting row and column targets.
 func rowColumnHeuristic(r, c int, sol *Solution, g *Grid) float64 {
 	rowDef := float64(g.rowTarget[r] - sol.rowCounts[r])
@@ -313,6 +334,29 @@ func rowColumnHeuristic(r, c int, sol *Solution, g *Grid) float64 {
 		colDef = 0
 	}
 	return rowDef + colDef
+}
+
+func densityScoringHeuristic(r, c int, sol *Solution, g *Grid) float64 {
+	treeBonus := 0.0
+	directions := [][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
+
+	for _, d := range directions {
+		nr, nc := r+d[0], c+d[1]
+		if g.inBounds(nr, nc) && g.cells[nr][nc] == 'T' {
+			treeBonus += 2.0
+		}
+	}
+
+	rowDeficit := float64(g.rowTarget[r] - sol.rowCounts[r])
+	colDeficit := float64(g.colTarget[c] - sol.colCounts[c])
+
+	if rowDeficit < 0 {
+		rowDeficit = -3.0
+	}
+	if colDeficit < 0 {
+		colDeficit = -3.0
+	}
+	return treeBonus + rowDeficit + colDeficit
 }
 
 // -----------------------------
@@ -493,10 +537,14 @@ func main() {
 		h = adjacencyHeuristic
 	case "tree":
 		h = treeMatchingHeuristic
+	case "tree_and_adj":
+		h = adjacencyTreeHeuristic
 	case "row":
 		h = rowColumnHeuristic
 	case "future":
 		h = futureFlexibilityHeuristic
+	case "density":
+		h = densityScoringHeuristic
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown heuristic type '%s'. Using default (adjacency).\n", heuristicType)
 		h = adjacencyHeuristic
