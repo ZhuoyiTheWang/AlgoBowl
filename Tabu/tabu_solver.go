@@ -814,17 +814,10 @@ func main() {
 		return
 	}
 
-<<<<<<< HEAD
 	// Tabu search parameters
 	maxIter := 2500
 	tabuTenure := 50
-	neighborhoodSize := 50
-=======
-	// Tabu parameters
-	maxIter := 100000
-	tabuTenure := 500
-	neighborhoodSize := 100
->>>>>>> e617a2527cced8522c75bc2d4691ee1c106de57a
+	neighborhoodSize := 40
 
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	bestSol := constructTabuSolution(g, initSol, maxIter, tabuTenure, neighborhoodSize, rnd)
