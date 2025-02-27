@@ -30,9 +30,9 @@ Group 965:
   Method: original, Performance: 25721.0
   Method: row, Performance: 30163.0
   Method: submitted, Performance: 24718.0
-  Method: tabu, Performance: 21152.0
+  Method: tabu, Performance: 20669.0
   Method: tree, Performance: 26298.0
---> Best Method: tabu (Performance: 21152.0)
+--> Best Method: tabu (Performance: 20669.0)
 
 Group 966:
   Method: adjacency, Performance: 81903.0
