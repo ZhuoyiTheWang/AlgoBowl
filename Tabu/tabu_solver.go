@@ -666,9 +666,9 @@ func main() {
 	fmt.Printf("Initial loaded => %d violations\n", initSol.violations)
 
 	// Tabu search parameters
-	maxIter := 5000
+	maxIter := 2500
 	tabuTenure := 50
-	neighborhoodSize := 600
+	neighborhoodSize := 400
 
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	bestSol := constructTabuSolution(g, initSol, maxIter, tabuTenure, neighborhoodSize, rnd)
