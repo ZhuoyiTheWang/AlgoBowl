@@ -2,7 +2,8 @@
 
 for i in {963..1024}; do
     echo "Running flex_solver.go on input_group$i.txt"
-    go run flex_solver.go "../algobowl_inputs/input_group$i.txt" "row"
+    go run flex_solver.go "../algobowl_inputs/input_group$i.txt" "density"
+    go run flex_solver.go "../algobowl_inputs/input_group$i.txt" "tree_and_adj"
 
     if [ $? -ne 0 ]; then
         echo "Error encountered while processing input_group$i.txt. Exiting."
