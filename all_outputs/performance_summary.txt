@@ -118,9 +118,9 @@ Group 973:
   Method: original, Performance: 22557.0
   Method: row, Performance: 53692.0
   Method: submitted, Performance: 22268.0
-  Method: tabu, Performance: 19950.0
+  Method: tabu, Performance: 16910.0
   Method: tree, Performance: 33352.0
---> Best Method: tabu (Performance: 19950.0)
+--> Best Method: tabu (Performance: 16910.0)
 
 Group 974:
   Method: adjacency, Performance: 19.0
@@ -206,9 +206,9 @@ Group 981:
   Method: original, Performance: 21394.0
   Method: row, Performance: 29810.0
   Method: submitted, Performance: 21331.0
-  Method: tabu, Performance: 21331.0
+  Method: tabu, Performance: 21156.0
   Method: tree, Performance: 26010.0
---> Best Method: submitted (Performance: 21331.0)
+--> Best Method: tabu (Performance: 21156.0)
 
 Group 982:
   Method: adjacency, Performance: 31122.0
