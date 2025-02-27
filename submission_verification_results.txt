@@ -1,307 +1,305 @@
 
-./all_outputs/submitted/output_from_994_to_1000.txt
-Claimed 115701 violations, had 115701 violations.
-Claimed 16229 tents, had 16229 tents.
+./all_outputs/best_performance/output_input_group1000.txt
+Claimed 115018 violations, had 115018 violations.
+Claimed 15668 tents, had 15668 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1001.txt
+./all_outputs/best_performance/output_input_group1001.txt
 Claimed 8 violations, had 8 violations.
 Claimed 3 tents, had 3 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1002.txt
+./all_outputs/best_performance/output_input_group1002.txt
 Claimed 46 violations, had 46 violations.
 Claimed 61 tents, had 61 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1003.txt
-Claimed 27650 violations, had 27650 violations.
-Claimed 18952 tents, had 18952 tents.
+./all_outputs/best_performance/output_input_group1003.txt
+Claimed 29782 violations, had 29782 violations.
+Claimed 18490 tents, had 18490 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1004.txt
+./all_outputs/best_performance/output_input_group1004.txt
 Claimed 4 violations, had 4 violations.
 Claimed 48 tents, had 48 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1005.txt
+./all_outputs/best_performance/output_input_group1005.txt
 Claimed 99 violations, had 99 violations.
 Claimed 48 tents, had 48 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1006.txt
+./all_outputs/best_performance/output_input_group1006.txt
 Claimed 0 violations, had 0 violations.
 Claimed 104 tents, had 104 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1007.txt
+./all_outputs/best_performance/output_input_group1007.txt
 Claimed 0 violations, had 0 violations.
 Claimed 5 tents, had 5 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1008.txt
+./all_outputs/best_performance/output_input_group1008.txt
 Claimed 4 violations, had 4 violations.
 Claimed 5 tents, had 5 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1009.txt
+./all_outputs/best_performance/output_input_group1009.txt
 Claimed 23 violations, had 23 violations.
 Claimed 38 tents, had 38 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1010.txt
+./all_outputs/best_performance/output_input_group1010.txt
 Claimed 34 violations, had 34 violations.
 Claimed 17 tents, had 17 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1011.txt
+./all_outputs/best_performance/output_input_group1011.txt
 Claimed 10 violations, had 10 violations.
 Claimed 14 tents, had 14 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1012.txt
-Claimed 51044 violations, had 51044 violations.
-Claimed 24639 tents, had 24639 tents.
+./all_outputs/best_performance/output_input_group1012.txt
+Claimed 49647 violations, had 49647 violations.
+Claimed 24141 tents, had 24141 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1013.txt
+./all_outputs/best_performance/output_input_group1013.txt
 Claimed 5 violations, had 5 violations.
 Claimed 57 tents, had 57 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1014.txt
+./all_outputs/best_performance/output_input_group1014.txt
 Claimed 289 violations, had 289 violations.
 Claimed 85 tents, had 85 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1015.txt
+./all_outputs/best_performance/output_input_group1015.txt
 Claimed 0 violations, had 0 violations.
 Claimed 33 tents, had 33 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1016.txt
+./all_outputs/best_performance/output_input_group1016.txt
 Claimed 151429 violations, had 151429 violations.
 Claimed 45153 tents, had 45153 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1017.txt
+./all_outputs/best_performance/output_input_group1017.txt
 Claimed 17506 violations, had 17506 violations.
 Claimed 19999 tents, had 19999 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1018.txt
-Claimed 10189 violations, had 10189 violations.
-Claimed 10261 tents, had 10261 tents.
+./all_outputs/best_performance/output_input_group1018.txt
+Claimed 8704 violations, had 8704 violations.
+Claimed 10001 tents, had 10001 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1019.txt
-Claimed 111168 violations, had 111168 violations.
-Claimed 19396 tents, had 19396 tents.
+./all_outputs/best_performance/output_input_group1019.txt
+Claimed 111110 violations, had 111110 violations.
+Claimed 19542 tents, had 19542 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1021.txt
-Claimed 26960 violations, had 26960 violations.
-Claimed 13563 tents, had 13563 tents.
+./all_outputs/best_performance/output_input_group1021.txt
+Claimed 24572 violations, had 24572 violations.
+Claimed 15476 tents, had 15476 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1022.txt
+./all_outputs/best_performance/output_input_group1022.txt
 Claimed 19914 violations, had 19914 violations.
 Claimed 5208 tents, had 5208 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1023.txt
+./all_outputs/best_performance/output_input_group1023.txt
 Claimed 15671 violations, had 15671 violations.
 Claimed 2063 tents, had 2063 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_1024.txt
+./all_outputs/best_performance/output_input_group1024.txt
 Claimed 17897 violations, had 17897 violations.
 Claimed 2720 tents, had 2720 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_963.txt
+./all_outputs/best_performance/output_input_group963.txt
 Claimed 64 violations, had 64 violations.
 Claimed 155 tents, had 155 tents.
 Valid
-Traceback (most recent call last):
-  File "C:\Users\Brian\Documents\Mines\CSCI_406\Projects\Algobowl\Zhuoyi_Algo\AlgoBowl\Python_Verification.py", line 163, in <module>
-    raise Exception(f"Invalid violations count: Claimed {claimed_violations} violations, but had {actual_violations} violations.")
-Exception: Invalid violations count: Claimed 76000
- violations, but had 135717 violations.
 
-./all_outputs/submitted/output_from_994_to_964.txt
-
-./all_outputs/submitted/output_from_994_to_965.txt
-Claimed 24718 violations, had 24718 violations.
-Claimed 11216 tents, had 11216 tents.
+./all_outputs/best_performance/output_input_group964.txt
+Claimed 77561 violations, had 77561 violations.
+Claimed 26591 tents, had 26591 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_966.txt
-Claimed 72977 violations, had 72977 violations.
-Claimed 18839 tents, had 18839 tents.
+./all_outputs/best_performance/output_input_group965.txt
+Claimed 20620 violations, had 20620 violations.
+Claimed 9154 tents, had 9154 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_967.txt
+./all_outputs/best_performance/output_input_group966.txt
+Claimed 68480 violations, had 68480 violations.
+Claimed 22028 tents, had 22028 tents.
+Valid
+
+./all_outputs/best_performance/output_input_group967.txt
 Claimed 67870 violations, had 67870 violations.
 Claimed 17295 tents, had 17295 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_968.txt
+./all_outputs/best_performance/output_input_group968.txt
 Claimed 251 violations, had 251 violations.
 Claimed 264 tents, had 264 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_969.txt
-Claimed 69272 violations, had 69272 violations.
-Claimed 18366 tents, had 18366 tents.
+./all_outputs/best_performance/output_input_group969.txt
+Claimed 65998 violations, had 65998 violations.
+Claimed 20139 tents, had 20139 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_970.txt
+./all_outputs/best_performance/output_input_group970.txt
 Claimed 172 violations, had 172 violations.
 Claimed 251 tents, had 251 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_971.txt
+./all_outputs/best_performance/output_input_group971.txt
 Claimed 37000 violations, had 37000 violations.
 Claimed 1000 tents, had 1000 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_972.txt
-Claimed 2583 violations, had 2583 violations.
-Claimed 253 tents, had 253 tents.
+./all_outputs/best_performance/output_input_group972.txt
+Claimed 2490 violations, had 2490 violations.
+Claimed 210 tents, had 210 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_973.txt
-Claimed 22557 violations, had 22557 violations.
-Claimed 19105 tents, had 19105 tents.
+./all_outputs/best_performance/output_input_group973.txt
+Claimed 16910 violations, had 16910 violations.
+Claimed 24307 tents, had 24307 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_974.txt
+./all_outputs/best_performance/output_input_group974.txt
 Claimed 18 violations, had 18 violations.
 Claimed 7 tents, had 7 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_975.txt
+./all_outputs/best_performance/output_input_group975.txt
 Claimed 13 violations, had 13 violations.
 Claimed 30 tents, had 30 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_976.txt
+./all_outputs/best_performance/output_input_group976.txt
 Claimed 67 violations, had 67 violations.
 Claimed 39 tents, had 39 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_977.txt
+./all_outputs/best_performance/output_input_group977.txt
 Claimed 71821 violations, had 71821 violations.
 Claimed 12906 tents, had 12906 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_978.txt
+./all_outputs/best_performance/output_input_group978.txt
 Claimed 285 violations, had 285 violations.
 Claimed 209 tents, had 209 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_979.txt
+./all_outputs/best_performance/output_input_group979.txt
 Claimed 10513 violations, had 10513 violations.
 Claimed 5093 tents, had 5093 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_980.txt
-Claimed 6858 violations, had 6858 violations.
-Claimed 17875 tents, had 17875 tents.
+./all_outputs/best_performance/output_input_group980.txt
+Claimed 6004 violations, had 6004 violations.
+Claimed 17841 tents, had 17841 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_981.txt
-Claimed 21331 violations, had 21331 violations.
-Claimed 7844 tents, had 7844 tents.
+./all_outputs/best_performance/output_input_group981.txt
+Claimed 21156 violations, had 21156 violations.
+Claimed 7813 tents, had 7813 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_982.txt
+./all_outputs/best_performance/output_input_group982.txt
 Claimed 30068 violations, had 30068 violations.
 Claimed 2569 tents, had 2569 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_983.txt
-Claimed 17491 violations, had 17491 violations.
-Claimed 15959 tents, had 15959 tents.
+./all_outputs/best_performance/output_input_group983.txt
+Claimed 17384 violations, had 17384 violations.
+Claimed 15950 tents, had 15950 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_984.txt
+./all_outputs/best_performance/output_input_group984.txt
 Claimed 129 violations, had 129 violations.
 Claimed 87 tents, had 87 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_985.txt
+./all_outputs/best_performance/output_input_group985.txt
 Claimed 8 violations, had 8 violations.
 Claimed 8 tents, had 8 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_986.txt
+./all_outputs/best_performance/output_input_group986.txt
 Claimed 74819 violations, had 74819 violations.
 Claimed 18914 tents, had 18914 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_987.txt
+./all_outputs/best_performance/output_input_group987.txt
 Claimed 5875 violations, had 5875 violations.
 Claimed 2538 tents, had 2538 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_988.txt
-Claimed 89548 violations, had 89548 violations.
-Claimed 31460 tents, had 31460 tents.
+./all_outputs/best_performance/output_input_group988.txt
+Claimed 89232 violations, had 89232 violations.
+Claimed 31537 tents, had 31537 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_989.txt
+./all_outputs/best_performance/output_input_group989.txt
 Claimed 4 violations, had 4 violations.
 Claimed 15 tents, had 15 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_990.txt
+./all_outputs/best_performance/output_input_group990.txt
 Claimed 88844 violations, had 88844 violations.
 Claimed 33640 tents, had 33640 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_991.txt
+./all_outputs/best_performance/output_input_group991.txt
 Claimed 4990 violations, had 4990 violations.
 Claimed 15314 tents, had 15314 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_992.txt
-Claimed 466 violations, had 466 violations.
-Claimed 487 tents, had 487 tents.
+./all_outputs/best_performance/output_input_group992.txt
+Claimed 456 violations, had 456 violations.
+Claimed 481 tents, had 481 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_993.txt
+./all_outputs/best_performance/output_input_group993.txt
 Claimed 1050 violations, had 1050 violations.
 Claimed 2219 tents, had 2219 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_994.txt
+./all_outputs/best_performance/output_input_group994.txt
 Claimed 63749 violations, had 63749 violations.
 Claimed 21139 tents, had 21139 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_995.txt
+./all_outputs/best_performance/output_input_group995.txt
 Claimed 47597 violations, had 47597 violations.
 Claimed 18878 tents, had 18878 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_996.txt
-Claimed 81432 violations, had 81432 violations.
-Claimed 38868 tents, had 38868 tents.
+./all_outputs/best_performance/output_input_group996.txt
+Claimed 80274 violations, had 80274 violations.
+Claimed 38618 tents, had 38618 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_997.txt
+./all_outputs/best_performance/output_input_group997.txt
 Claimed 15 violations, had 15 violations.
 Claimed 57 tents, had 57 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_998.txt
+./all_outputs/best_performance/output_input_group998.txt
 Claimed 2386 violations, had 2386 violations.
 Claimed 2024 tents, had 2024 tents.
 Valid
 
-./all_outputs/submitted/output_from_994_to_999.txt
+./all_outputs/best_performance/output_input_group999.txt
 Claimed 164 violations, had 164 violations.
 Claimed 8 tents, had 8 tents.
 Valid
