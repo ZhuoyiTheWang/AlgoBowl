@@ -118,9 +118,9 @@ Group 973:
   Method: original, Performance: 22557.0
   Method: row, Performance: 53692.0
   Method: submitted, Performance: 22268.0
-  Method: tabu, Performance: 22268.0
+  Method: tabu, Performance: 19950.0
   Method: tree, Performance: 33352.0
---> Best Method: submitted (Performance: 22268.0)
+--> Best Method: tabu (Performance: 19950.0)
 
 Group 974:
   Method: adjacency, Performance: 19.0
@@ -228,9 +228,9 @@ Group 983:
   Method: original, Performance: 17661.0
   Method: row, Performance: 46422.0
   Method: submitted, Performance: 17491.0
-  Method: tabu, Performance: 17661.0
+  Method: tabu, Performance: 17384.0
   Method: tree, Performance: 32144.0
---> Best Method: most_constrained (Performance: 17491.0)
+--> Best Method: tabu (Performance: 17384.0)
 
 Group 984:
   Method: adjacency, Performance: 149.0
@@ -327,9 +327,9 @@ Group 992:
   Method: original, Performance: 492.0
   Method: row, Performance: 902.0
   Method: submitted, Performance: 466.0
-  Method: tabu, Performance: 466.0
+  Method: tabu, Performance: 456.0
   Method: tree, Performance: 895.0
---> Best Method: submitted (Performance: 466.0)
+--> Best Method: tabu (Performance: 456.0)
 
 Group 993:
   Method: adjacency, Performance: 2774.0
@@ -413,10 +413,10 @@ Group 1000:
   Method: most_constrained, Performance: 144173.0
   Method: original, Performance: 116327.0
   Method: row, Performance: 130678.0
-  Method: submitted, Performance: 115701.0
-  Method: tabu, Performance: 115701.0
+  Method: submitted, Performance: 115018.0
+  Method: tabu, Performance: 115018.0
   Method: tree, Performance: 130678.0
---> Best Method: submitted (Performance: 115701.0)
+--> Best Method: submitted (Performance: 115018.0)
 
 Group 1001:
   Method: adjacency, Performance: 11.0
@@ -611,9 +611,9 @@ Group 1018:
   Method: original, Performance: 12813.0
   Method: row, Performance: 15616.0
   Method: submitted, Performance: 10189.0
-  Method: tabu, Performance: 9469.0
+  Method: tabu, Performance: 8704.0
   Method: tree, Performance: 13424.0
---> Best Method: tabu (Performance: 9469.0)
+--> Best Method: tabu (Performance: 8704.0)
 
 Group 1019:
   Method: adjacency, Performance: 125215.0
@@ -622,9 +622,9 @@ Group 1019:
   Method: original, Performance: 111168.0
   Method: row, Performance: 130322.0
   Method: submitted, Performance: 111168.0
-  Method: tabu, Performance: 111168.0
+  Method: tabu, Performance: 111110.0
   Method: tree, Performance: 130556.0
---> Best Method: original (Performance: 111168.0)
+--> Best Method: tabu (Performance: 111110.0)
 
 Group 1021:
   Method: adjacency, Performance: 30673.0
@@ -633,9 +633,9 @@ Group 1021:
   Method: original, Performance: 28276.0
   Method: row, Performance: 33757.0
   Method: submitted, Performance: 26960.0
-  Method: tabu, Performance: 26960.0
+  Method: tabu, Performance: 24572.0
   Method: tree, Performance: 30642.0
---> Best Method: submitted (Performance: 26960.0)
+--> Best Method: tabu (Performance: 24572.0)
 
 Group 1022:
   Method: adjacency, Performance: 23319.0
