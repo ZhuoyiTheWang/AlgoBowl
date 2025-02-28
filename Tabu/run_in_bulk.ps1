@@ -1,5 +1,5 @@
 # Define the array of input numbers
-$inputs = @(994)  # Add more numbers as needed
+$inputs = @(996)  # Add more numbers as needed
 
 foreach ($i in $inputs) {
  
