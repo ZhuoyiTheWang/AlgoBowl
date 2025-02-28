@@ -593,10 +593,10 @@ Group 1012:
   Method: most_constrained, Performance: 59177.0
   Method: original, Performance: 53998.0
   Method: row, Performance: 51345.0
-  Method: tabu, Performance: 50739.0
+  Method: tabu, Performance: 48862.0
   Method: tree, Performance: 53006.0
   Method: tree_and_adj, Performance: 50879.0
---> Best Method: density (Performance: 49647.0)
+--> Best Method: tabu (Performance: 48862.0)
 
 Group 1013:
   Method: adjacency, Performance: 58.0
