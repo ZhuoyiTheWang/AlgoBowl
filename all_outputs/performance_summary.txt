@@ -403,10 +403,10 @@ Group 996:
   Method: most_constrained, Performance: 91683.0
   Method: original, Performance: 81801.0
   Method: row, Performance: 84979.0
-  Method: tabu, Performance: 78303.0
+  Method: tabu, Performance: 78222.0
   Method: tree, Performance: 81653.0
   Method: tree_and_adj, Performance: 82131.0
---> Best Method: tabu (Performance: 78303.0)
+--> Best Method: tabu (Performance: 78222.0)
 
 Group 997:
   Method: adjacency, Performance: 56.0
