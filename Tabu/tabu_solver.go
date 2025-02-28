@@ -809,7 +809,7 @@ func main() {
 	}
 
 	// Tabu search parameters
-	maxIter := 2500
+	maxIter := 10000
 	tabuTenure := 50
 	neighborhoodSize := 50
 
