@@ -56,10 +56,10 @@ Group 967:
   Method: most_constrained, Performance: 77383.0
   Method: original, Performance: 68989.0
   Method: row, Performance: 74358.0
-  Method: tabu, Performance: 67870.0
+  Method: tabu, Performance: 63216.0
   Method: tree, Performance: 71023.0
   Method: tree_and_adj, Performance: 70534.0
---> Best Method: tabu (Performance: 67870.0)
+--> Best Method: tabu (Performance: 63216.0)
 
 Group 968:
   Method: adjacency, Performance: 321.0
@@ -308,10 +308,10 @@ Group 988:
   Method: most_constrained, Performance: 103348.0
   Method: original, Performance: 102576.0
   Method: row, Performance: 89683.0
-  Method: tabu, Performance: 100383.0
+  Method: tabu, Performance: 88926.0
   Method: tree, Performance: 89641.0
   Method: tree_and_adj, Performance: 89232.0
---> Best Method: tree_and_adj (Performance: 89232.0)
+--> Best Method: tabu (Performance: 88926.0)
 
 Group 989:
   Method: adjacency, Performance: 14.0
@@ -332,10 +332,10 @@ Group 990:
   Method: most_constrained, Performance: 102391.0
   Method: original, Performance: 96556.0
   Method: row, Performance: 92071.0
-  Method: tabu, Performance: 95243.0
+  Method: tabu, Performance: 88843.0
   Method: tree, Performance: 89487.0
   Method: tree_and_adj, Performance: 90739.0
---> Best Method: future (Performance: 88844.0)
+--> Best Method: tabu (Performance: 88843.0)
 
 Group 991:
   Method: adjacency, Performance: 16635.0
@@ -487,9 +487,10 @@ Group 1003:
   Method: most_constrained, Performance: 38505.0
   Method: original, Performance: 29782.0
   Method: row, Performance: 46386.0
+  Method: tabu, Performance: 29781.0
   Method: tree, Performance: 38041.0
   Method: tree_and_adj, Performance: 34410.0
---> Best Method: original (Performance: 29782.0)
+--> Best Method: tabu (Performance: 29781.0)
 
 Group 1004:
   Method: adjacency, Performance: 52.0
