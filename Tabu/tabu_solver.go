@@ -433,7 +433,6 @@ func constructTabuSolution(g *Grid, initSol *Solution, maxIter int, tabuTenure i
 				candidateMoves = append(candidateMoves, Move{rr, cc, true})
 			}
 		}
-		fmt.Printf("Iteration %d: Generated %d candidate moves.\n", iter, len(candidateMoves))
 
 		candChan := make(chan Move, len(candidateMoves))
 		resChan := make(chan CandidateResult, len(candidateMoves))
@@ -485,12 +484,7 @@ func constructTabuSolution(g *Grid, initSol *Solution, maxIter int, tabuTenure i
 			break
 		}
 
-		moveStr := "Remove"
-		if bestMove.add {
-			moveStr = "Add"
-		}
-		fmt.Printf("Iteration %d: Chosen move %s at (%d,%d) => viol %d\n",
-			iter, moveStr, bestMove.r, bestMove.c, bestMoveVal)
+		fmt.Printf("Iteration %d:  viol %d\n", iter, bestMoveVal)
 
 		current = applyMove(current, g, bestMove)
 		tabuList[bestMove] = iter + tabuTenure
@@ -817,11 +811,7 @@ func main() {
 	// Tabu search parameters
 	maxIter := 2500
 	tabuTenure := 50
-<<<<<<< HEAD
-	neighborhoodSize := 40
-=======
-	neighborhoodSize := 50
->>>>>>> 05905b2996bd5efbc3ed18b009e632bfed56c238
+	neighborhoodSize := 100
 
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	bestSol := constructTabuSolution(g, initSol, maxIter, tabuTenure, neighborhoodSize, rnd)
