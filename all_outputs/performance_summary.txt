@@ -408,10 +408,10 @@ Group 994:
   Method: future, Performance: 81179.0
   Method: most_constrained, Performance: 76811.0
   Method: row, Performance: 82356.0
-  Method: tabu, Performance: 63749.0
+  Method: tabu, Performance: 62957.0
   Method: tree, Performance: 80682.0
   Method: tree_and_adj, Performance: 74534.0
---> Best Method: tabu (Performance: 63749.0)
+--> Best Method: tabu (Performance: 62957.0)
 
 Group 995:
   Method: adjacency, Performance: 55370.0
